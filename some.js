@@ -1,12 +1,31 @@
 /*
 
 -------------------------------------------------------------------------------------
-Эти настройки можно менять меняя значение true или false 
+-------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
+Настройки:
+//------------------------------------------
+значения true или false 
 Стандартные настройки*/
-  // оставляет окно макроса открытым по нажатии на кнопки
+    //Оставляет окно макроса открытым по нажатии на кнопки
   let closeOnSubmit = false
   //Постоянно открытое меню кастомной стены
     let customOpen = true
+//------------------------------------------
+//Таблицы включенные по умолчанию
+//для того чтобы установить свои любимые таблицы в качестве стандартных
+//откройте выберите их из списка, откройте консоль браузера (ctrl + shift + c)
+//найдите строчку 
+const dafaultOnTables = [
+
+]
+let applyChanges = false;
+const tableCompendium = 'laaru-dnd5-hw.tables-extra';
+const itemsCompendium = 'laaru-dnd5-hw.items';
+
 /*-----------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------
 Разработка макросов и модулей для Fvtt писать -- Xeonis
@@ -18,9 +37,6 @@
 -------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------*/
 
-let applyChanges = false;
-const tableCompendium = 'laaru-dnd5-hw.tables-extra';
-const itemsCompendium = 'laaru-dnd5-hw.items';
 const tableIds = {
     'common': 'qPouW0h2zXtFo62a',
     'uncommon': '6wcTUmhT2Hny9vNf',
@@ -46,19 +62,6 @@ const textFooter = `
 </ol>
 </div>
 `;
-const itemTextHtml = ({ text, price, img, documentId, documentCollection }) => {
-    return img != null && documentId != null ? `
-      <li class="table-result flexrow" data-result-id="${documentId}" style="border-top: 1px solid var(--color-border-dark-tertiary); border-bottom: 0; position: relative; width: 100%; padding: 10px 0 0 10px; overflow: hidden">
-        <img class="result-image" src="${img}">
-        <div class="result-text" style="max-width: calc(100% - 44px)">
-            <span>@UUID[Compendium.${documentCollection}.${documentId}]{${text}}</span>
-        </div>
-      </li>
-      <li style="padding: 0 0 4px 0;">
-        <div class="flavor-text" style="padding-left: 40px;"> за <strong>${price}</strong></div>
-      </li>
-` : '';
-}
 
 new Dialog({
     title: `Генератор торговца`,
@@ -148,3 +151,24 @@ new Dialog({
         }
     }
 }).render(true);
+
+
+
+
+
+
+
+
+const itemTextHtml = ({ text, price, img, documentId, documentCollection }) => {
+    return img != null && documentId != null ? `
+      <li class="table-result flexrow" data-result-id="${documentId}" style="border-top: 1px solid var(--color-border-dark-tertiary); border-bottom: 0; position: relative; width: 100%; padding: 10px 0 0 10px; overflow: hidden">
+        <img class="result-image" src="${img}">
+        <div class="result-text" style="max-width: calc(100% - 44px)">
+            <span>@UUID[Compendium.${documentCollection}.${documentId}]{${text}}</span>
+        </div>
+      </li>
+      <li style="padding: 0 0 4px 0;">
+        <div class="flavor-text" style="padding-left: 40px;"> за <strong>${price}</strong></div>
+      </li>
+` : '';
+}
