@@ -11,7 +11,17 @@
 //Постоянно открытый список таблиц
 let customOpen = false
 //стандартная кость бросков
-let dafaultDice = "1d10"
+let dafaultDice = 5//"1d10"
+
+//стоимость
+const priceByType = {
+  'common': '(1d6) * 10',
+  'uncommon': '(1d6+1) * 100',
+  'rare': '2d10 * 1000',
+  'veryrare': '(1d4+1) * 10000',
+  'legenrady': '2d6 * 25000',
+  'artifact': '2d6 * 250000',
+}
 
 //в эти списки можно включать и выключать новые таблицы
 //после генерации макрос отпавляет в консоль оспользованные им таблицы
@@ -59,20 +69,23 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
   const textFooter = `</ol></div>`;
 
 
-  const itemTextHtml = ({item, price, type }) => {
+  const itemTextHtml = async ({item, type}) => {
+    let price = 10
     console.log(price,type);
+    console.log(item);
+
       return (item.img != null && item.documentId != null) ? `
         <li class="table-result flexrow" data-result-id="${item.documentId}" 
           style="border-top: 1px solid var(--color-border-dark-tertiary); 
           border-bottom: 0; position: relative; 
           width: 100%; padding: 10px 0 0 10px; overflow: hidden">
-          <img class="result-image" src="${img}">
+          <img class="result-image" src="${item.img}">
           <div class="result-text" style="max-width: calc(100% - 44px)">
-              <span>@UUID[Compendium.${item.documentCollection}.${item.documentId}]{${item.text.split('').splice(0,25).join()}}</span>
+              <span>@UUID[Compendium.${item.documentCollection}.${item.documentId}]{${item.text.split('').splice(0,20).join('')}}</span>
           </div>
         </li>
         <li style="padding: 0 0 4px 0;">
-          <div class="flavor-text" style="padding-left: 40px;"> за <strong>${price}</strong></div>
+          <div class="flavor-text" style="padding-left: 40px;"> за <strong>${price} ЗМ</strong></div>
         </li>
       ` : '';
   }
@@ -109,7 +122,7 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
               ></td>
               <td>${table.name}</td>
               <td><input type="text" id="count_${table._id}" value="0" /></td>
-              <td style="text-align: center;"><input type="checkbox" id="active_${table._id}" name="shop-gen-whisper" ${checked} ></td>
+              <td style="text-align: center;"><input type="checkbox" id="active_${table._id}" name="shop-gen-whisper" ${checked}></td>
               </tr>`
       })    
   }
@@ -168,6 +181,14 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
         <label>Шепот себе:</label>
         <input type="checkbox" id="shop-gen-whisper" name="shop-gen-whisper" checked >
       </div>
+      <div class="form-group">
+        <label>Сохранить предметы в инвентарь выбранного актера</label>
+        <input type="checkbox" id="shop-gen-store" >
+      </div>
+      <div class="form-group">
+        <label>✅Суммировать/Игнорировать одинаковые</label>
+        <input type="checkbox" id="shop-gen-same" >
+      </div>
       </form>
         
       `,
@@ -183,69 +204,8 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
           },
       },
       default: "yes",
-      close: async html => {
-          if (applyChanges == false) return;
-          let activateList = []
-          currentTables.forEach(table => {
-              table.active = html.find(`[id="active_${table._id}"]`)[0].checked || false
-
-              table.count = html.find(`[id="count_${table._id}"]`)[0].value || 0
-              if (table.active) activateList.push({_id:table._id, count: table.count})
-          })
-          console.log("Только что бросались следующие таблицы:");
-          console.log(activateList);
-          const count = html.find('[name="shop-gen-count"]')[0].value || '1';
-          const type = html.find('[name="shop-gen-item-rarity"]')[0].value || "common";
-          const whisper = html.find('[name="shop-gen-whisper"]')[0].checked || false;
-          
-          const nameMacro = html.find('[name="shop-gen-new-name"]')[0].value || "New Macro seller";
-          const createMacro = html.find('[name="shop-gen-new"]')[0].checked || false;
-          console.log(createMacro,nameMacro);
-
-          countItems = new Roll(count.toString());
-          await countItems.evaluate();
-          countItems = countItems.total
-          console.log(countItems);
-          for (let count = 0; count < countItems; count++) {
-            if (countItems <= 0) break;
-            let itemsOnThisRoll = new Roll(`1d${countItems}`);
-            await itemsOnThisRoll.evaluate();
-            roll(itemsOnThisRoll.total)
-            
-            countItems -= itemsOnThisRoll.total
-          }
-          let itemlist = []
-          async function roll (onThisIteration) {
-            let currentTable = new Roll(`1d${activateList.length}`);
-            await currentTable.evaluate();
-            let table = activateList[currentTable.total-1]
-            let countLocal = new Roll(table.count);
-            await countLocal.evaluate();
-            if (countLocal.total < 0) activateList[currentTable.total-1].count = 0
-            let realTable = await tablePacks.getDocument(table._id);
-            let draw = await realTable.drawMany(countLocal.total+onThisIteration, { displayChat: false });
-            activateList[currentTable.total-1].count -= countLocal.total
-            draw.results.forEach((item) => {
-              itemlist.push(itemTextHtml({
-                  item,
-                  type,
-                  price: `${10} ЗМ`
-              })) 
-            })
-           
-          } 
-
-        let chatData = {
-          user: game.user._id,
-          speaker: ChatMessage.getSpeaker(),
-          content: textHeader + itemlist.join('') + textFooter,
-        };
-        console.log(chatData);
-        if (whisper) {
-            chatData.whisper = ChatMessage.getWhisperRecipients("GM");
-        }
-
-          ChatMessage.create(chatData, {});
+      close: async (html) => {
+       await domain (html)
       }
   },
   {
@@ -254,4 +214,104 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
     resizable:true,
     
   }).render(true);
+
+async function domain (html) {
+  let itemsRList = []
+
+  
+  let itemlist = []
+  if (applyChanges == false) return;
+  let activateList = []
+  currentTables.forEach(table => {
+    table.active = html.find(`[id="active_${table._id}"]`)[0].checked || false
+
+    table.count = html.find(`[id="count_${table._id}"]`)[0].value || "0"
+    if (table.active) activateList.push({_id:table._id, count: table.count})
+  })
+  console.log("Только что бросались следующие таблицы:");
+  console.info(activateList);
+
+  
+  const count = html.find('[name="shop-gen-count"]')[0].value || '1';
+  const type = html.find('[name="shop-gen-item-rarity"]')[0].value || "common";
+  const whisper = html.find('[name="shop-gen-whisper"]')[0].checked || false;
+  const storeCreated = html.find('[id="shop-gen-store"]')[0].checked || false;
+  const countSame = html.find('[id="shop-gen-same"]')[0].checked || false;
+
+
+  const nameMacro = html.find('[id="shop-gen-new-name"]')[0].value || "New Macro seller";
+  const createMacro = html.find('[id="shop-gen-new"]')[0].checked || false;
+  console.log(createMacro,nameMacro);
+
+  
+  countItems = new Roll(count.toString());
+  await countItems.evaluate();
+  countItems = countItems.total
+  for (let count = 0; count < countItems; count++) {
+    if (countItems <= 0) break;
+    let itemsOnThisRoll = new Roll(`1d${countItems}`);
+    await itemsOnThisRoll.evaluate();
+    await roll(itemsOnThisRoll.total)
+    countItems -= itemsOnThisRoll.total
+  }
+
+
+
+
+  async function roll (onThisIteration) {
+    let currentTable = new Roll(`1d${activateList.length}`);
+    await currentTable.evaluate();
+    let table = activateList[currentTable.total-1]
+    let countLocal = new Roll(table.count);
+    await countLocal.evaluate();
+    if (countLocal.total < 0) activateList[currentTable.total-1].count = 0
+    let realTable = await tablePacks.getDocument(table._id);
+    let draw = await realTable.drawMany(countLocal.total+onThisIteration, { displayChat: false });
+    activateList[currentTable.total-1].count -= countLocal.total
+    draw.results.forEach(item => {itemsRList.push({item:item,count:1})})
+  }
+  
+
+
+  let itemsRList2 = []
+  let tobe = []
+  itemsRList.forEach ((item,ind,arr) => {
+    if (!tobe.includes(item.documentId)) {
+      let same = arr.filter((same) => item.item.documentId == same.item.documentId)
+      item.count = same.length
+      itemsRList2.push(item)
+      tobe.push(item.item.documentId);
+    }
+  })
+
+  itemsRList = itemsRList2
+  itemsRList2 = null
+  tobe = null
+
+  for (let i = 0; i < itemsRList.length; i++) {
+    let pack = game.packs.get(item.item.documentCollection);
+    let moreInfoAboutItem = await pack.getDocument("dlLnpX2b0r6QDz33")
+    let itemRarity = moreInfoAboutItem.system.rarity
+
+  
+    
+    const item = itemsRList[i];
+    itemlist.push(await itemTextHtml({
+      item:item.item,
+      type,
+      count
+    }))
+
+  let chatData = {
+    user: game.user._id,
+    speaker: ChatMessage.getSpeaker(),
+    content: textHeader + itemlist.join('') + textFooter,
+  };
+  if (whisper) {
+      chatData.whisper = ChatMessage.getWhisperRecipients("GM");
+  }
+
+    ChatMessage.create(chatData, {});
+  }
+}
 //-----------------------------------------------------------------------------------
