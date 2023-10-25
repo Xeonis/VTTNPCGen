@@ -12,7 +12,10 @@
 let customOpen = false
 //стандартная кость бросков
 let dafaultDice = 5//"1d10"
-
+//сумморовать или игнорировать по умолчанию
+let defaultSumOrIgnore = true
+//сохранять в токена по умолчанию
+let saveOnTockenAsDefault = true
 //стоимость
 const priceByType = {
   'common': '(1d6) * 10',
@@ -69,11 +72,7 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
   const textFooter = `</ol></div>`;
 
 
-  const itemTextHtml = async ({item, type}) => {
-    let price = 10
-    console.log(price,type);
-    console.log(item);
-
+  const itemTextHtml = async ({item, price ,count}) => {
       return (item.img != null && item.documentId != null) ? `
         <li class="table-result flexrow" data-result-id="${item.documentId}" 
           style="border-top: 1px solid var(--color-border-dark-tertiary); 
@@ -85,7 +84,7 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
           </div>
         </li>
         <li style="padding: 0 0 4px 0;">
-          <div class="flavor-text" style="padding-left: 40px;"> за <strong>${price} ЗМ</strong></div>
+          <div class="flavor-text" style="padding-left: 40px;"> за <strong>${price} ЗМ${(count > 1)? " x "+ count+'шт.':''} </strong></div>
         </li>
       ` : '';
   }
@@ -122,7 +121,9 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
               ></td>
               <td>${table.name}</td>
               <td><input type="text" id="count_${table._id}" value="0" /></td>
-              <td style="text-align: center;"><input type="checkbox" id="active_${table._id}" name="shop-gen-whisper" ${checked}></td>
+              <td style="text-align: center;"><input type="checkbox" 
+                                                id="active_${table._id}" 
+                                                name="shop-gen-whisper" ${checked}></td>
               </tr>`
       })    
   }
@@ -174,7 +175,7 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
         <option value="rare">Редкий</option>
         <option value="veryrare">Крайне редкий</option>
         <option value="legenrady">Легендарный</option>
-        <option value="artifact">Артефакт</option>
+        <option value="artifact" selected >Артефакт</option>
         </select>
       </div>
       <div class="form-group">
@@ -182,12 +183,12 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
         <input type="checkbox" id="shop-gen-whisper" name="shop-gen-whisper" checked >
       </div>
       <div class="form-group">
-        <label>Сохранить предметы в инвентарь выбранного актера</label>
-        <input type="checkbox" id="shop-gen-store" >
+        <label>Сложите это все в рюкзак выбранного актера</label>
+        <input type="checkbox" id="shop-gen-store" ${(saveOnTockenAsDefault)? "checked": ""}>
       </div>
       <div class="form-group">
         <label>✅Суммировать/Игнорировать одинаковые</label>
-        <input type="checkbox" id="shop-gen-same" >
+        <input type="checkbox" id="shop-gen-same" ${(defaultSumOrIgnore)? "checked": ""} >
       </div>
       </form>
         
@@ -273,33 +274,42 @@ async function domain (html) {
   
 
 
-  let itemsRList2 = []
-  let tobe = []
-  itemsRList.forEach ((item,ind,arr) => {
-    if (!tobe.includes(item.documentId)) {
-      let same = arr.filter((same) => item.item.documentId == same.item.documentId)
-      item.count = same.length
-      itemsRList2.push(item)
-      tobe.push(item.item.documentId);
-    }
-  })
 
-  itemsRList = itemsRList2
-  itemsRList2 = null
-  tobe = null
+  if (countSame) {
+    let itemsRList2 = []
+    let tobe = []
+    itemsRList.forEach ((item,ind,arr) => {
+      if (!tobe.includes(item.documentId)) {
+        let same = arr.filter((same) => item.item.documentId == same.item.documentId)
+        item.count = same.length
+        itemsRList2.push(item)
+        tobe.push(item.item.documentId);
+      }
+    })
+  
+    itemsRList = itemsRList2
+    itemsRList2 = null
+    tobe = null
+  }else{
+    itemsRList.forEach ((item) => {
+        item.count = 1
+    })
+  }
+  
 
   for (let i = 0; i < itemsRList.length; i++) {
-    let pack = game.packs.get(item.item.documentCollection);
-    let moreInfoAboutItem = await pack.getDocument("dlLnpX2b0r6QDz33")
-    let itemRarity = moreInfoAboutItem.system.rarity
-
-  
-    
     const item = itemsRList[i];
+    let moreInfoAboutItem = await pack.getDocument(item.item.documentCollection)
+    let itemRarity = moreInfoAboutItem?.system?.rarity || "uncommon"
+    let price = new Roll(priceByType[itemRarity]);
+    await price.evaluate();
+    let itemRarityLevel = Object.keys(itemRarity).findIndex(i => i == itemRarity)
+    let maxRarityLevel = Object.keys(itemRarity).findIndex(i => i == type)
+    if (itemRarityLevel < maxRarityLevel) continue;
     itemlist.push(await itemTextHtml({
       item:item.item,
-      type,
-      count
+      count:item.count,
+      price:price.total
     }))
 
   let chatData = {
