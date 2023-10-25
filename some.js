@@ -306,19 +306,25 @@ async function domain (html) {
 
   for (let i = 0; i < itemsRList.length; i++) {
     const item = itemsRList[i];
-    let moreInfoAboutItem = await pack.getDocument(item.item.documentCollection)
+    let pack = game.packs.get(item.item.documentCollection);
+    let moreInfoAboutItem = await pack.getDocument(item.item.documentId)
     let itemRarity = moreInfoAboutItem?.system?.rarity || "uncommon"
     let price = new Roll(priceByType[itemRarity]);
     await price.evaluate();
     let itemRarityLevel = Object.keys(itemRarity).findIndex(i => i == itemRarity)
     let maxRarityLevel = Object.keys(itemRarity).findIndex(i => i == type)
     if (itemRarityLevel < maxRarityLevel) continue;
+    console.log(item);
+    itemsRList[i].moreInfoAboutItem = moreInfoAboutItem
     itemlist.push(await itemTextHtml({
       item:item.item,
       count:item.count,
       price:price.total
     }))
-
+  }
+  if (storeCreated) {
+    additems(itemsRList)
+  }
   let chatData = {
     user: game.user._id,
     speaker: ChatMessage.getSpeaker(),
@@ -330,10 +336,19 @@ async function domain (html) {
 
     ChatMessage.create(chatData, {});
   }
+
+
+let additems = (items) => {
+  let actor = canvas.tokens.controlled[0].actor
+  items.forEach(item => {
+    
+    actor.createEmbeddedDocuments("Item", [item.moreInfoAboutItem]);
+  })
 }
 
-
 let saveSettings = () => {
-  console.log(this)
+  let command = this.command
+  console.log("Script save")
+  
 }
 //-----------------------------------------------------------------------------------
