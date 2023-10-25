@@ -1,4 +1,5 @@
 /*Генератор случайного лута/магазинчика по таблицам
+если выбран актер будет добавлять предметы нароленные ему в инвентарь
 Доработал Xeonis 
 -------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------
@@ -6,15 +7,16 @@
 -------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------
 -----[Стандартные настройки]-----
+---[Само изменяемые настройки]---
 -----------------------------------------------------------------------------------*/
-//Эти настройки можно менять меняя значение true или false 
+//Эти настройки можно менять и ручками и они еще будут сохранятся!
 //Постоянно открытый список таблиц
 let customOpen = false
 //стандартная кость бросков
 let dafaultDice = 5//"1d10"
 //сумморовать или игнорировать по умолчанию
 let defaultSumOrIgnore = true
-//сохранять в токена по умолчанию
+//сохранять в токена по умолчанию (если он выбран)
 let saveOnTockenAsDefault = true
 //стоимость
 const priceByType = {
@@ -39,6 +41,7 @@ let dafaultListTables = [
   { "_id": "1DKyrEhTfMDppA7S", "count": "0" }
 ];
 //список игнорируемых
+//-----[Тут придется добавлять ручками]-----
 let blockedListTables = [
   {_id:'ZUV4rPuYHU532IHq',count:0},
   {_id:'dKfomxx8mNH2HGDZ',count:0}, 
@@ -56,9 +59,6 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
 
 /*-----------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------
-Разработка макросов и модулей для Fvtt писать -- Xeonis
--------------------------------------------------------------------------------------
--------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------
 Далее этого коментария идет функциональный код ничего не торгайте, ну или трогайте :)
 -------------------------------------------------------------------------------------
@@ -73,6 +73,13 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
 
 
   const itemTextHtml = async ({item, price ,count}) => {
+    let name = ''
+    if (item.text.includes("Безделушка:")){
+      name = item.text.slice(11)
+    }else{
+      name = item.text.slice(0,25)
+    }
+    item.text.split('').splice(0,20).join('')
       return (item.img != null && item.documentId != null) ? `
         <li class="table-result flexrow" data-result-id="${item.documentId}" 
           style="border-top: 1px solid var(--color-border-dark-tertiary); 
@@ -80,7 +87,7 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
           width: 100%; padding: 10px 0 0 10px; overflow: hidden">
           <img class="result-image" src="${item.img}">
           <div class="result-text" style="max-width: calc(100% - 44px)">
-              <span>@UUID[Compendium.${item.documentCollection}.${item.documentId}]{${item.text.split('').splice(0,20).join('')}}</span>
+              <span>@UUID[Compendium.${item.documentCollection}.${item.documentId}]{${name}}</span>
           </div>
         </li>
         <li style="padding: 0 0 4px 0;">
@@ -323,5 +330,10 @@ async function domain (html) {
 
     ChatMessage.create(chatData, {});
   }
+}
+
+
+let saveSettings = () => {
+  console.log(this)
 }
 //-----------------------------------------------------------------------------------
