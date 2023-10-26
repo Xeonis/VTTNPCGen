@@ -37,16 +37,8 @@ const priceByType = {
 //после генерации макрос отпавляет в консоль оспользованные им таблицы
 //список стандартно используемых
 let dafaultListTables = [
-  { "_id": "3V2isuiDLKEOzu54", "count": "0" },
-  { "_id": "746WbvDuyKiRF8xC", "count": "0" },
-  { "_id": "oxNQoYotKiCeHL6m", "count": "0" },
-  { "_id": "ot0pQ5yrnB92mm5R", "count": "0" },
-  { "_id": "zb7ed6u7Ng80y6oD", "count": "0" },
-  { "_id": "d1yRwrFcFE3k8R6c", "count": "0" },
-  { "_id": "1DKyrEhTfMDppA7S", "count": "0" }
 ];
 //список игнорируемых
-//-----[Тут придется добавлять ручками]-----
 let blockedListTables = [
 ];
 //в каком компендиуме искать (можно переназначить под свой)
@@ -136,7 +128,7 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
               <td><input type="text" id="count_${table._id}" value="0" /></td>
               <td style="text-align: center;"><input type="checkbox" 
                                                 id="active_${table._id}" 
-                                                name="shop-gen-whisper" ${checked}></td>
+                                                 ${checked}></td>
               </tr>`
       })    
   }
@@ -159,69 +151,79 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
   
   
   
-  new Dialog({
-      title: `Генератор торговца`,
-      content: `<form>
-      <details id="customWall"  ${(customOpen)? "open": ""}>
-          <summary>Список таблиц </summary>
-          Значение количества для конкретной таблицы будет проссумировано с общим значением
-          <div style="height: 300px; overflow: auto;">
-            ${buildTable(header,buildRows(currentTables))}
+new Dialog({
+    title: `Генератор торговца`,
+    content: `<form>
+    <details id="customWall"  ${(customOpen)? "open": ""}>
+        <summary>Список таблиц </summary>
+        Значение количества для конкретной таблицы будет проссумировано с общим значением
+        <div style="height: 350px; overflow: auto;">
+          ${buildTable(header,buildRows(currentTables))}
+        </div>
+        <div>
+          <h4>Настройки:</h4>
+          <div class="form-group">
+              <label for="shop-gen-new">Сохранить:</label>
+              <input type="checkbox" id="shop-gen-new">
           </div>
-          <div>
-            <h4>Сохранить настройки:</h4>
-            <input type="checkbox" id="shop-gen-new">
-          </div>
-      </details>
-        <label for="count">Количество предметов(число и формула броска):</label>
-        <input type="text" id="shop-gen-count" name="shop-gen-count" value="${dafaultDice}"/>   
-      </div>
-      <div class="form-group">
-        <label>Максимальная редкость предмета:</label>
-        <select id="shop-gen-item-rarity" name="shop-gen-item-rarity">
-        <option value="common"  ${(typeItemAsDefault == "common")? "selected": ""}>Обычный</option>
-        <option value="uncommon" ${(typeItemAsDefault == "uncommon")? "selected": ""}>Необычный</option>
-        <option value="rare"      ${(typeItemAsDefault == "rare")? "selected": ""}>Редкий</option>
-        <option value="veryrare" ${(typeItemAsDefault == "veryrare")? "selected": ""} >Крайне редкий</option>
-        <option value="legenrady"${(typeItemAsDefault == "legenrady")? "selected": ""}>Легендарный</option>
-        <option value="artifact" ${(typeItemAsDefault == "artifact")? "selected": ""} >Артефакт</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Шепот себе:</label>
-        <input type="checkbox" id="shop-gen-whisper" name="shop-gen-whisper" checked >
-      </div>
-      <div class="form-group">
-        <label>Сложите это все в рюкзак выбранного актера</label>
-        <input type="checkbox" id="shop-gen-store" ${(saveOnTockenAsDefault)? "checked": ""}>
-      </div>
-      <div class="form-group">
-        <label>✅Суммировать/Игнорировать одинаковые</label>
-        <input type="checkbox" id="shop-gen-same" ${(defaultSumOrIgnore)? "checked": ""} >
-      </div>
-      </form>`,
-      buttons: {
-          yes: {
-              icon: "<i class='fas fa-check'></i>",
-              label: `Сгенерировать`,
-              callback: () => applyChanges = true
-          },
-          no: {
-              icon: "<i class='fas fa-times'></i>",
-              label: `Отмена`
-          },
-      },
-      default: "yes",
-      close: async (html) => {
-       await domain (html)
-      }
-  },
-  {
-    height: "450px",
-    scale: true,
-    resizable:true,
-    
-  }).render(true);
+          <h5>Сброс или добавление игнорируемых только присохранении</h5>
+          <div class="form-group">
+            <label for="shop-gen-remove">Убрать выбранные таблицы(они больше не будут появлятся):</label>
+            <input type="checkbox" id="shop-gen-remove">
+            <label for="shop-gen-return">Вернуть все убранные таблицы:</label>
+            <input  type="checkbox" id="shop-gen-return">
+          </div>       
+        </div>
+    </details>
+      <label for="count">Количество предметов(число и формула броска):</label>
+      <input type="text" id="shop-gen-count" name="shop-gen-count" value="${dafaultDice}"/>   
+    </div>
+    <div class="form-group">
+      <label>Максимальная редкость предмета:</label>
+      <select id="shop-gen-item-rarity" name="shop-gen-item-rarity">
+      <option value="common"   ${(typeItemAsDefault == "common")? "selected": ""}>Обычный</option>
+      <option value="uncommon" ${(typeItemAsDefault == "uncommon")? "selected": ""}>Необычный</option>
+      <option value="rare"     ${(typeItemAsDefault == "rare")? "selected": ""}>Редкий</option>
+      <option value="veryrare" ${(typeItemAsDefault == "veryrare")? "selected": ""} >Крайне редкий</option>
+      <option value="legenrady"${(typeItemAsDefault == "legenrady")? "selected": ""}>Легендарный</option>
+      <option value="artifact" ${(typeItemAsDefault == "artifact")? "selected": ""} >Артефакт</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for = "shop-gen-whisper">Шепот себе:</label>
+      <input type="checkbox" id="shop-gen-whisper" name="shop-gen-whisper" checked >
+    </div>
+    <div class="form-group">
+      <label for = "shop-gen-store">Сложите это все в рюкзак выбранного актера</label>
+      <input type="checkbox" id="shop-gen-store" ${(saveOnTockenAsDefault)? "checked": ""}>
+    </div>
+    <div class="form-group">
+      <label for = "shop-gen-same">✅Суммировать/Игнорировать одинаковые</label>
+      <input type="checkbox" id="shop-gen-same" ${(defaultSumOrIgnore)? "checked": ""} >
+    </div>
+  </form>`,
+    buttons: {
+        yes: {
+            icon: "<i class='fas fa-check'></i>",
+            label: `Сгенерировать`,
+            callback: () => applyChanges = true
+        },
+        no: {
+            icon: "<i class='fas fa-times'></i>",
+            label: `Отмена`
+        },
+    },
+    default: "yes",
+    close: async (html) => {
+      await domain (html)
+    }
+},
+{
+  height: "450px",
+  scale: true,
+  resizable:true,
+  
+}).render(true);
 
 async function domain (html) {
   let itemsRList = []
@@ -248,12 +250,27 @@ async function domain (html) {
 
   const count = html.find('[name="shop-gen-count"]')[0].value || '1';
   const type = html.find('[name="shop-gen-item-rarity"]')[0].value || "common";
-  const whisper = html.find('[name="shop-gen-whisper"]')[0].checked || false;
+  const whisper = html.find('[name="shop-gen-whisper"]')[0].checked || true;
   const storeCreated = html.find('[id="shop-gen-store"]')[0].checked || false;
   const countSame = html.find('[id="shop-gen-same"]')[0].checked || false;
 
 
+
   const createMacro = html.find('[id="shop-gen-new"]')[0].checked || false;
+  const restoreTable = html.find('[id="shop-gen-return"]')[0].checked || false;
+  const addTableToIgnore = html.find('[id="shop-gen-remove"]')[0].checked || false;
+  if (createMacro) {
+    let deactivateList = blockedListTables;
+    if (restoreTable) {
+      deactivateList = [];
+    }else if (addTableToIgnore) {
+      deactivateList = deactivateList.concat(...activateList)
+      savelist = "[]"
+    }
+    console.log(deactivateList);
+    saveSettings({ activateList:JSON.parse(savelist),count,type,storeCreated,countSame, deactivateList})
+    if (restoreTable || addTableToIgnore) return;
+  }
 
 
   countItems = new Roll(""+count.toString());
@@ -311,9 +328,21 @@ async function domain (html) {
     const item = itemsRList[i];
     let pack = game.packs.get(item.item.documentCollection);
     let moreInfoAboutItem = await pack?.getDocument(item.item?.documentId)
+    
     let itemRarity = moreInfoAboutItem?.system?.rarity || "uncommon"
-    let price = new Roll(""+priceByType[itemRarity]);
-    await price.evaluate();
+    let price = 0
+    if(moreInfoAboutItem?.system?.price?.value > 0) {
+      price = moreInfoAboutItem?.system?.price?.value
+    }else{
+      price = new Roll(""+priceByType[itemRarity]);
+      await price.evaluate();
+      price = price.total
+      if(moreInfoAboutItem?.system?.price?.value == 0){
+        item.price = price
+      }
+    }
+    
+    
     let itemRarityLevel = Object.keys(priceByType).findIndex(i => i == itemRarity)
     let maxRarityLevel = Object.keys(priceByType).findIndex(i => i == type)
     if (itemRarityLevel > maxRarityLevel) continue;
@@ -321,7 +350,7 @@ async function domain (html) {
     itemlist.push(await itemTextHtml({
       item:item.item,
       count:item.count,
-      price:price.total
+      price
     }))
   }
   if (storeCreated) {
@@ -338,24 +367,31 @@ async function domain (html) {
 
 
     ChatMessage.create(chatData, {});
-    if (createMacro) {
-      saveSettings({ activateList:JSON.parse(savelist),count,type,storeCreated,countSame})
-    }
+   
 }
   
 let additems = (items) => {
   let actor = canvas.tokens.controlled[0].actor
   items.forEach(item => {
-    if (item.moreInfoAboutItem) actor.createEmbeddedDocuments("Item", [item.moreInfoAboutItem]);
+    if (item.moreInfoAboutItem) {
+      item.moreInfoAboutItem.system.price.value = item.price
+      actor.createEmbeddedDocuments("Item", [item.moreInfoAboutItem]);
+    }
   })
 }
-let change = false;
+
+
 let saveSettings = (inputParams) => {
   let command = this.command
   const parameters = [
     {
       inside:"activateList",
       outside:"dafaultListTables",
+      typeOf: Array
+    },
+    {
+      inside:"deactivateList",
+      outside:"blockedListTables",
       typeOf: Array
     },
     {
@@ -386,24 +422,30 @@ let saveSettings = (inputParams) => {
       let endProperty = 0
       if (parameter.typeOf == Array) {
         let endPropertySep = "]"
-        endProperty = command.indexOf(endPropertySep,beginProperty)
+        endProperty = command.indexOf(endPropertySep,beginProperty)+2
       }else{
         let endPropertySep = "\n"
         endProperty = command.indexOf(endPropertySep,beginProperty)
       }
       let value = JSON.stringify(inputParams[parameter.inside]).split('},{').join('},\n{')
-      console.log([command.slice(beginChar,beginProperty),command.slice(beginProperty+1,endProperty-1),value])
       command = command.slice(0, beginProperty+1) + value + command.slice(endProperty-1)
     }
-    
+    confset(command)
     
     
     
   })
-  change = true
+  return command
 }
 
-if (change) {
-  this.command = command
+let confset = (set) => {
+  this.command = set
 }
+
 //-----------------------------------------------------------------------------------
+
+
+
+
+
+
