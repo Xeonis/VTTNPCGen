@@ -10,14 +10,19 @@
 ---[Само изменяемые настройки]---
 -----------------------------------------------------------------------------------*/
 //Эти настройки можно менять и ручками и они еще будут сохранятся!
+//ВАЖНО! все настройки должны быть написаны построчно!
+// для каждой настройки своя строка!
 //Постоянно открытый список таблиц
-let customOpen = false
+let customOpen = false;
 //стандартная кость бросков
-let dafaultDice = 5//"1d10"
+//поддерживаются формулы бросков fvtt
+let dafaultDice = "1d10 + 1 * (5 + 1d3)";
 //сумморовать или игнорировать по умолчанию
-let defaultSumOrIgnore = true
+let defaultSumOrIgnore = false;
 //сохранять в токена по умолчанию (если он выбран)
-let saveOnTockenAsDefault = true
+let saveOnTockenAsDefault = false;
+//максимальная редкость по умолчанию
+let typeItemAsDefault = 'artifact';
 //стоимость
 const priceByType = {
   'common': '(1d6) * 10',
@@ -26,7 +31,7 @@ const priceByType = {
   'veryrare': '(1d4+1) * 10000',
   'legenrady': '2d6 * 25000',
   'artifact': '2d6 * 250000',
-}
+};
 
 //в эти списки можно включать и выключать новые таблицы
 //после генерации макрос отпавляет в консоль оспользованные им таблицы
@@ -43,18 +48,8 @@ let dafaultListTables = [
 //список игнорируемых
 //-----[Тут придется добавлять ручками]-----
 let blockedListTables = [
-  {_id:'ZUV4rPuYHU532IHq',count:0},
-  {_id:'dKfomxx8mNH2HGDZ',count:0}, 
-  {_id:'qBDtPYETQPvbUGKp',count:0}, 
-  {_id:'2qDg2sz8xYpmHrrC',count:0}, 
-  {_id:'GXZ3jGKfQWzPZSLh',count:0}, 
-  {_id:'N34NnokOfBiV1YPJ',count:0}, 
-  {_id:'hHVqr7nopYSyvqb0',count:0}, 
-  {_id:'gZ3sYMNujzWrV4Jx',count:0}, 
-  {_id:'QiRIr0kvxo1A3Wzf',count:0}, 
-  {_id:'p4okMDe6fxF0HpQN',count:0}
 ];
-
+//в каком компендиуме искать (можно переназначить под свой)
 const tableCompendium = 'laaru-dnd5-hw.tables-extra';
 
 /*-----------------------------------------------------------------------------------
@@ -79,21 +74,32 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
     }else{
       name = item.text.slice(0,25)
     }
-    item.text.split('').splice(0,20).join('')
-      return (item.img != null && item.documentId != null) ? `
-        <li class="table-result flexrow" data-result-id="${item.documentId}" 
-          style="border-top: 1px solid var(--color-border-dark-tertiary); 
-          border-bottom: 0; position: relative; 
-          width: 100%; padding: 10px 0 0 10px; overflow: hidden">
-          <img class="result-image" src="${item.img}">
-          <div class="result-text" style="max-width: calc(100% - 44px)">
-              <span>@UUID[Compendium.${item.documentCollection}.${item.documentId}]{${name}}</span>
-          </div>
-        </li>
-        <li style="padding: 0 0 4px 0;">
-          <div class="flavor-text" style="padding-left: 40px;"> за <strong>${price} ЗМ${(count > 1)? " x "+ count+'шт.':''} </strong></div>
-        </li>
-      ` : '';
+    let answer = ''
+    if (item.img != null && item.documentId != null) {
+      answer = `<li class="table-result flexrow" data-result-id="${item.documentId}" 
+        style="border-top: 1px solid var(--color-border-dark-tertiary); 
+        border-bottom: 0; position: relative; 
+        width: 100%; padding: 10px 0 0 10px; overflow: hidden">
+        <img class="result-image" src="${item.img}">
+        <div class="result-text" style="max-width: calc(100% - 44px)">
+            <span>@UUID[Compendium.${item.documentCollection}.${item.documentId}]{${name}}</span>
+        </div>
+      </li>
+      <li style="padding: 0 0 4px 0;">
+        <div class="flavor-text" style="padding-left: 40px;"> за <strong>${price} ЗМ${(count > 1)? " x "+ count+'шт.':''} </strong></div>
+      </li>`
+    }else if (item?.text) {
+      answer = `<li class="table-result flexrow" data-result-id="${item._id}" 
+        style="border-top: 1px solid var(--color-border-dark-tertiary); 
+        border-bottom: 0; position: relative; 
+        width: 100%; padding: 10px 0 0 10px; overflow: hidden">
+        <img class="result-image" src="${item.img}">
+        <div class="result-text" style="max-width: calc(100% - 44px)">
+          <span>${item.text}</span>
+        </div>
+      </li>`
+    }
+    return answer;
   }
 
   
@@ -163,11 +169,7 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
             ${buildTable(header,buildRows(currentTables))}
           </div>
           <div>
-            <h4>Сохранить настройку как отдельный макрос:</h4>
-            <label for="count"">Название</label>
-            <div style="display: inline-block;" >
-              <input style=width: 50px" type="text" id="shop-gen-new-name" value="Мой магазинчиик(а)"/>
-            </div>
+            <h4>Сохранить настройки:</h4>
             <input type="checkbox" id="shop-gen-new">
           </div>
       </details>
@@ -177,12 +179,12 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
       <div class="form-group">
         <label>Максимальная редкость предмета:</label>
         <select id="shop-gen-item-rarity" name="shop-gen-item-rarity">
-        <option value="common">Обычный</option>
-        <option value="uncommon">Необычный</option>
-        <option value="rare">Редкий</option>
-        <option value="veryrare">Крайне редкий</option>
-        <option value="legenrady">Легендарный</option>
-        <option value="artifact" selected >Артефакт</option>
+        <option value="common"  ${(typeItemAsDefault == "common")? "selected": ""}>Обычный</option>
+        <option value="uncommon" ${(typeItemAsDefault == "uncommon")? "selected": ""}>Необычный</option>
+        <option value="rare"      ${(typeItemAsDefault == "rare")? "selected": ""}>Редкий</option>
+        <option value="veryrare" ${(typeItemAsDefault == "veryrare")? "selected": ""} >Крайне редкий</option>
+        <option value="legenrady"${(typeItemAsDefault == "legenrady")? "selected": ""}>Легендарный</option>
+        <option value="artifact" ${(typeItemAsDefault == "artifact")? "selected": ""} >Артефакт</option>
         </select>
       </div>
       <div class="form-group">
@@ -197,9 +199,7 @@ const tableCompendium = 'laaru-dnd5-hw.tables-extra';
         <label>✅Суммировать/Игнорировать одинаковые</label>
         <input type="checkbox" id="shop-gen-same" ${(defaultSumOrIgnore)? "checked": ""} >
       </div>
-      </form>
-        
-      `,
+      </form>`,
       buttons: {
           yes: {
               icon: "<i class='fas fa-check'></i>",
@@ -236,10 +236,16 @@ async function domain (html) {
     table.count = html.find(`[id="count_${table._id}"]`)[0].value || "0"
     if (table.active) activateList.push({_id:table._id, count: table.count})
   })
-  console.log("Только что бросались следующие таблицы:");
-  console.info(activateList);
-
+  console.groupCollapsed("Макрос бросков торговца")
+    console.log("Только что бросались следующие таблицы:");
+    console.info(activateList);
+    console.log("Для вставки в настройки использайте эту строку:");
+    let savelist = JSON.stringify(activateList).split('},{').join('},\n{')
+    console.info(JSON.stringify(activateList).split('},{').join('},\n{'));
+  console.groupEnd()
   
+  if (!activateList.length > 0) return;
+
   const count = html.find('[name="shop-gen-count"]')[0].value || '1';
   const type = html.find('[name="shop-gen-item-rarity"]')[0].value || "common";
   const whisper = html.find('[name="shop-gen-whisper"]')[0].checked || false;
@@ -247,12 +253,10 @@ async function domain (html) {
   const countSame = html.find('[id="shop-gen-same"]')[0].checked || false;
 
 
-  const nameMacro = html.find('[id="shop-gen-new-name"]')[0].value || "New Macro seller";
   const createMacro = html.find('[id="shop-gen-new"]')[0].checked || false;
-  console.log(createMacro,nameMacro);
 
-  
-  countItems = new Roll(count.toString());
+
+  countItems = new Roll(""+count.toString());
   await countItems.evaluate();
   countItems = countItems.total
   for (let count = 0; count < countItems; count++) {
@@ -270,7 +274,7 @@ async function domain (html) {
     let currentTable = new Roll(`1d${activateList.length}`);
     await currentTable.evaluate();
     let table = activateList[currentTable.total-1]
-    let countLocal = new Roll(table.count);
+    let countLocal = new Roll(""+table.count);
     await countLocal.evaluate();
     if (countLocal.total < 0) activateList[currentTable.total-1].count = 0
     let realTable = await tablePacks.getDocument(table._id);
@@ -303,18 +307,16 @@ async function domain (html) {
     })
   }
   
-
   for (let i = 0; i < itemsRList.length; i++) {
     const item = itemsRList[i];
     let pack = game.packs.get(item.item.documentCollection);
-    let moreInfoAboutItem = await pack.getDocument(item.item.documentId)
+    let moreInfoAboutItem = await pack?.getDocument(item.item?.documentId)
     let itemRarity = moreInfoAboutItem?.system?.rarity || "uncommon"
-    let price = new Roll(priceByType[itemRarity]);
+    let price = new Roll(""+priceByType[itemRarity]);
     await price.evaluate();
-    let itemRarityLevel = Object.keys(itemRarity).findIndex(i => i == itemRarity)
-    let maxRarityLevel = Object.keys(itemRarity).findIndex(i => i == type)
-    if (itemRarityLevel < maxRarityLevel) continue;
-    console.log(item);
+    let itemRarityLevel = Object.keys(priceByType).findIndex(i => i == itemRarity)
+    let maxRarityLevel = Object.keys(priceByType).findIndex(i => i == type)
+    if (itemRarityLevel > maxRarityLevel) continue;
     itemsRList[i].moreInfoAboutItem = moreInfoAboutItem
     itemlist.push(await itemTextHtml({
       item:item.item,
@@ -334,21 +336,74 @@ async function domain (html) {
       chatData.whisper = ChatMessage.getWhisperRecipients("GM");
   }
 
+
     ChatMessage.create(chatData, {});
-  }
-
-
+    if (createMacro) {
+      saveSettings({ activateList:JSON.parse(savelist),count,type,storeCreated,countSame})
+    }
+}
+  
 let additems = (items) => {
   let actor = canvas.tokens.controlled[0].actor
   items.forEach(item => {
-    
-    actor.createEmbeddedDocuments("Item", [item.moreInfoAboutItem]);
+    if (item.moreInfoAboutItem) actor.createEmbeddedDocuments("Item", [item.moreInfoAboutItem]);
   })
 }
-
-let saveSettings = () => {
+let change = false;
+let saveSettings = (inputParams) => {
   let command = this.command
-  console.log("Script save")
-  
+  const parameters = [
+    {
+      inside:"activateList",
+      outside:"dafaultListTables",
+      typeOf: Array
+    },
+    {
+      inside:"count",
+      outside:"dafaultDice",
+      typeOf: String
+    },
+    {
+      inside:"type",
+      outside:"typeItemAsDefault",
+      typeOf: String
+    },
+    {
+      inside:"storeCreated",
+      outside:"saveOnTockenAsDefault",
+      typeOf: Boolean
+    },
+    {
+      inside:"countSame",
+      outside:"defaultSumOrIgnore",
+      typeOf: Boolean
+    },
+  ]
+  parameters.forEach (parameter =>{
+    let beginChar = command.indexOf(parameter.outside)
+    if (beginChar != -1) {
+      let beginProperty = command.indexOf("=",beginChar)+1
+      let endProperty = 0
+      if (parameter.typeOf == Array) {
+        let endPropertySep = "]"
+        endProperty = command.indexOf(endPropertySep,beginProperty)
+      }else{
+        let endPropertySep = "\n"
+        endProperty = command.indexOf(endPropertySep,beginProperty)
+      }
+      let value = JSON.stringify(inputParams[parameter.inside]).split('},{').join('},\n{')
+      console.log([command.slice(beginChar,beginProperty),command.slice(beginProperty+1,endProperty-1),value])
+      command = command.slice(0, beginProperty+1) + value + command.slice(endProperty-1)
+    }
+    
+    
+    
+    
+  })
+  change = true
+}
+
+if (change) {
+  this.command = command
 }
 //-----------------------------------------------------------------------------------
