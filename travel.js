@@ -263,7 +263,7 @@ await Dialog.prompt({
             milesPerDay = roundDown(move.formula({speed, mainSpeed, hoursPerDay, overhour ,defaultSpeed}))
             // Затем применяем модификатор местности   
             if (isDifficultTerrain && move.difficultTerrain) milesPerDay *= difficultyMovement;
-            milesPerHour = milesPerDay / hoursPerDay
+            milesPerHour = (milesPerDay / hoursPerDay).toFixed(1)
         }else{
             milesPerHour = move.formula({speed, mainSpeed, hoursPerDay, overhour,defaultSpeed})
             // Затем применяем модификатор местности   
@@ -278,7 +278,7 @@ await Dialog.prompt({
         let weeks = Math.floor(days/weekLength)
         let countRolls = countRollsForumula({diceRollTime, weeks, days, totalDays, hoursPerDay,diceRoll});
         
-
+        
 
         //основное сообщение
         let messageContent = `Время: ${days} дней и ${hours}. <br>
