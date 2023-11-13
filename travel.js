@@ -65,16 +65,13 @@ const TypesOfMoves = {
 -------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------*/
 
-  
-function roundDown(num) {
-    return Math.floor(num);
-}
-
-function convertHoursToTime(hours) {
-    const wholeHours = Math.floor(hours);
-    const minutes = Math.round((hours - wholeHours) * 60);
-    return `${wholeHours}:${minutes.toString().padStart(2, '0')} часа`;
-}
+///////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
+/*
+    ФУНКЦИИ ОТОБРАЖЕНИЯ ДИАЛОГОВОГО ОКНА
+*/
+///////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
 
 const buttonBlocker = (box,isTravel) =>  {
     const speedInput = document.getElementById('speed-input');
@@ -105,41 +102,6 @@ const buttonBlocker = (box,isTravel) =>  {
             gallopCheckbox.checked = true;
         }
 }
-
-
-//рсчет форсированного марша
-const forcedHikeMoveCalc = (overhours = 1) => {
-    if (overhours == 0) return []
-    let answer = []
-    for (let over = 1; over < overhours; over++) {
-        answer.push(`${defaultHoursPerDay+over} час - ${forcedHikeMoveFormula(over)}`)
-    }
-    return answer
-}
-
-
-//рсчет форсированного марша
-
-
-const countRollsForumula = ({diceRollTime, weeks, days, totalDays, hoursPerDay,diceRoll}) => {
-    let CountRolls = 0;
-    switch (diceRollTime) {
-        case "week":
-            CountRolls = weeks
-            break;
-        case "hour":
-            CountRolls = roundDown(totalDays * hoursPerDay)
-            break;
-        default:
-            CountRolls = days
-            break;
-    }
-    return Array(CountRolls).fill(new Roll(`${diceRoll}`).evaluate({async: false}));
-}
-
-
-
-
 
 
 let content = `
@@ -208,99 +170,187 @@ let content = `
 </script>
 `
 
-;
-  
+
+
+///////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
+/*
+    СБОР ОТВЕТА
+*/
+///////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
+
+const createMessage = () => {
+    //основное сообщение
+    let messageContent = `Время: ${days} дней и ${hours}. <br>
+    Расстояние: ${distance} миль. <br>
+    ${paceDescriptions[selectedPace]}. <br>
+    Пересеченная местность: ${isDifficultTerrain ? "Да" : "Нет"}. <br>
+    ${(isCrewedTransport ? "Использование 24 часового путешествия.<br>"  : "")}
+    ${(isUndergroundTravel ? 'Путешествие в подземье. <br>' : '')}
+    Введенная скорость: ${userEnteredSpeed ? userEnteredSpeed + (isSeaTravel ? " мили/ч" : " фт/раунд") : "Базовая"}. <br>
+    Скорость в милях/час: ${milesPerHour}. <br>
+    Скорость в милях/день: ${milesPerDay}.`;
+
+    ChatMessage.create({
+        content: messageContent,
+        speaker: ChatMessage.getSpeaker(),
+        whisper: ChatMessage.getWhisperRecipients("GM"),
+    });
+}
+
+
+///////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
+/*
+    ВЫЧИСЛЯЛКИ
+*/
+///////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
+
+
+function roundDown(num) {
+    return Math.floor(num);
+}
+
+function convertHoursToTime(hours) {
+    const wholeHours = Math.floor(hours);
+    const minutes = Math.round((hours - wholeHours) * 60);
+    return `${wholeHours}:${minutes.toString().padStart(2, '0')} часа`;
+}
+
+
+
+
+//рсчет форсированного марша
+const forcedHikeMoveCalc = (overhours = 1) => {
+    if (overhours == 0) return []
+    let answer = []
+    for (let over = 1; over < overhours; over++) {
+        answer.push(`${defaultHoursPerDay+over} час - ${forcedHikeMoveFormula(over)}`)
+    }
+    return answer
+}
+
+
+//рсчет форсированного марша
+
+
+const countRollsForumula = ({diceRollTime, weeks, days, totalDays, hoursPerDay,diceRoll}) => {
+    let CountRolls = 0;
+    switch (diceRollTime) {
+        case "week":
+            CountRolls = weeks
+            break;
+        case "hour":
+            CountRolls = roundDown(totalDays * hoursPerDay)
+            break;
+        default:
+            CountRolls = days
+            break;
+    }
+    return Array(CountRolls).fill(new Roll(`${diceRoll}`).evaluate({async: false}));
+};
+
+
+
+///////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
+/*
+    ОБРАБОТЧИК ОТВЕТА
+*/
+///////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
+
+
+
+const mainDialogCallback = (html) => {
+    const distance = parseFloat($(html).find("#distance-input").val()) || 1;
+    const userEnteredSpeed = parseFloat($(html).find("#speed-input").val());
+    const selectedPace = $(html).find("#pace").val();
+
+    const isSeaTravel = $(html).find("#sea-travel").is(":checked") || false;
+    const isDifficultTerrain = $(html).find("#difficult-terrain").is(":checked") || false;
+    const isCrewedTransport = $(html).find("#crewed-transport").is(":checked") || false;
+    const isUndergroundTravel = $(html).find("#underground-travel").is(":checked") || false;
+    const isGallop = $(html).find("#gallop-travel").is(":checked") || false;
+
+    //Форсированное перемещение
+    const isOverhourMovement = $(html).find("#overhour-checkbox").is(":checked") || false
+    const overhour = parseFloat($(html).find("#overhour-value").val()) || 1;
+    
+    //бросок кубика каждый
+    const isCheckedDiceRoll = $(html).find("#dice-roll-checkbox").is(":checked") || false
+    const diceRollTime = $(html).find("#dice-roll-time").val() || "day"
+    const diceRoll = $(html).find("#dice-roll").val() || "1d20"
+
+    let speed = userEnteredSpeed || defaultSpeed;
+    let mainSpeed = speed;
+    let hoursPerDay = isCrewedTransport ? crewedTransportHoursPerDay : (defaultHoursPerDay + ((isOverhourMovement)? overhour : 0)) ;
+
+    let milesPerHour;
+    let milesPerDay;
+    console.log(1);
+    
+    
+    let move = TypesOfMoves.default
+    //Переключение типа формулы
+    if (isUndergroundTravel) {
+        move = TypesOfMoves.underground
+    }else if (isSeaTravel){
+        move = TypesOfMoves.shipped
+    }else if (isGallop){
+        move = TypesOfMoves.gallop
+    }
+
+    
+
+    // Сначала рассчитываем скорость с учетом темпа
+    if (move.paceOptions) speed *= paceOptions[selectedPace]
+
+    if (move.mainFormulaIsDays) {
+        milesPerDay = roundDown(move.formula({speed, mainSpeed, hoursPerDay, overhour ,defaultSpeed}))
+        // Затем применяем модификатор местности   
+        if (isDifficultTerrain && move.difficultTerrain) milesPerDay *= difficultyMovement;
+        milesPerHour = (milesPerDay / hoursPerDay).toFixed(1)
+    }else{
+        milesPerHour = move.formula({speed, mainSpeed, hoursPerDay, overhour,defaultSpeed})
+        // Затем применяем модификатор местности   
+        if (isDifficultTerrain && move.difficultTerrain) milesPerHour *= difficultyMovement;
+        milesPerDay = roundDown(milesPerHour * hoursPerDay)
+    }
+
+    //посчитаем деенечки
+    let totalDays = distance / milesPerDay;
+    let days = Math.floor(totalDays);
+    let hours = convertHoursToTime((totalDays - days) * hoursPerDay);
+    let weeks = Math.floor(days/weekLength)
+    let countRolls = countRollsForumula({diceRollTime, weeks, days, totalDays, hoursPerDay,diceRoll});
+    
+    createMessage()
+}
+
+
+///////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
+/*ОСНОВНОЕ ДИАЛОГОВОЕ ОКНО*/
+///////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
+ 
 await Dialog.prompt({
     title: "Расчет времени путешествия",
     close: () => {console.log("log me");},
     content,
     label: "Готово",
-    callback: (html) => {
-        const distance = parseFloat($(html).find("#distance-input").val()) || 1;
-        const userEnteredSpeed = parseFloat($(html).find("#speed-input").val());
-        const selectedPace = $(html).find("#pace").val();
-
-        const isSeaTravel = $(html).find("#sea-travel").is(":checked") || false;
-        const isDifficultTerrain = $(html).find("#difficult-terrain").is(":checked") || false;
-        const isCrewedTransport = $(html).find("#crewed-transport").is(":checked") || false;
-        const isUndergroundTravel = $(html).find("#underground-travel").is(":checked") || false;
-        const isGallop = $(html).find("#gallop-travel").is(":checked") || false;
-
-        //Форсированное перемещение
-        const isOverhourMovement = $(html).find("#overhour-checkbox").is(":checked") || false
-        const overhour = parseFloat($(html).find("#overhour-value").val()) || 1;
+    callback: (html) => mainDialogCallback(html)
         
-        //бросок кубика каждый
-        const isCheckedDiceRoll = $(html).find("#dice-roll-checkbox").is(":checked") || false
-        const diceRollTime = $(html).find("#dice-roll-time").val() || "day"
-        const diceRoll = $(html).find("#dice-roll").val() || "1d20"
-
-        let speed = userEnteredSpeed || defaultSpeed;
-        let mainSpeed = speed;
-        let hoursPerDay = isCrewedTransport ? crewedTransportHoursPerDay : (defaultHoursPerDay + ((isOverhourMovement)? overhour : 0)) ;
-
-        let milesPerHour;
-        let milesPerDay;
-        console.log(1);
-        
-        
-        let move = TypesOfMoves.default
-        //Переключение типа формулы
-        if (isUndergroundTravel) {
-            move = TypesOfMoves.underground
-        }else if (isSeaTravel){
-            move = TypesOfMoves.shipped
-        }else if (isGallop){
-            move = TypesOfMoves.gallop
-        }
-
-      
-
-        // Сначала рассчитываем скорость с учетом темпа
-        if (move.paceOptions) speed *= paceOptions[selectedPace]
-
-        if (move.mainFormulaIsDays) {
-            milesPerDay = roundDown(move.formula({speed, mainSpeed, hoursPerDay, overhour ,defaultSpeed}))
-            // Затем применяем модификатор местности   
-            if (isDifficultTerrain && move.difficultTerrain) milesPerDay *= difficultyMovement;
-            milesPerHour = (milesPerDay / hoursPerDay).toFixed(1)
-        }else{
-            milesPerHour = move.formula({speed, mainSpeed, hoursPerDay, overhour,defaultSpeed})
-            // Затем применяем модификатор местности   
-            if (isDifficultTerrain && move.difficultTerrain) milesPerHour *= difficultyMovement;
-            milesPerDay = roundDown(milesPerHour * hoursPerDay)
-        }
-
-        //посчитаем деенечки
-        let totalDays = distance / milesPerDay;
-        let days = Math.floor(totalDays);
-        let hours = convertHoursToTime((totalDays - days) * hoursPerDay);
-        let weeks = Math.floor(days/weekLength)
-        let countRolls = countRollsForumula({diceRollTime, weeks, days, totalDays, hoursPerDay,diceRoll});
-        
-        
-
-        //основное сообщение
-        let messageContent = `Время: ${days} дней и ${hours}. <br>
-        Расстояние: ${distance} миль. <br>
-        ${paceDescriptions[selectedPace]}. <br>
-        Пересеченная местность: ${isDifficultTerrain ? "Да" : "Нет"}. <br>
-        ${(isCrewedTransport ? "Использование 24 часового путешествия.<br>"  : "")}
-        ${(isUndergroundTravel ? 'Путешествие в подземье. <br>' : '')}
-        Введенная скорость: ${userEnteredSpeed ? userEnteredSpeed + (isSeaTravel ? " мили/ч" : " фт/раунд") : "Базовая"}. <br>
-        Скорость в милях/час: ${milesPerHour}. <br>
-        Скорость в милях/день: ${milesPerDay}.`;
-
-        ChatMessage.create({
-            content: messageContent,
-            speaker: ChatMessage.getSpeaker(),
-            whisper: ChatMessage.getWhisperRecipients("GM"),
-        });
-    },
 });
 
-
-
+///////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
+/*спасибо за внимание на этом все*/
+///////////////////////////////////////////////////////
+///////////////////////////////////////////////////////
 
 
 
