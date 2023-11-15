@@ -14,45 +14,55 @@ const weekLength = 7; // количество дней в неделе
 const forcedHikeMoveFormula = (overhour) => {return 10 + overhour} // формула расчета усталости
 
 const paceOptions = {
-  fast: 1.3334,
-  normal: 1,
-  slow: 0.6667
-};
-//Описания для  
-const paceDescriptions = {
-  fast: "Быстрый темп: Штраф −5 к пассивному значению Мудрости (Внимательность)",
-  normal: "Нормальный темп",
-  slow: "Медленный темп: Возможность перемещаться скрытно"
-};
+    fast: {
+        modifier: 1.3334,
+        description: "Быстрый темп: Штраф −5 к пассивному значению Мудрости (Внимательность)",
+        name: "Быстрый"
+    },
+    normal: {
+        modifier: 0.6667,
+        description: "Нормальный темп",
+        name: "Нормальный"
+    },
+    slow: {
+        modifier: 1.3334,
+        description: "Медленный темп: Возможность перемещаться скрытно",
+        name: "Быстрый"
+    },
+}
+
+
 //Формылы 
 const TypesOfMoves = {
     underground: {
-        paceOptions:true,
+        paceOptionsActive:true,
         difficultTerrain: true,
         mainFormulaInDays: false,
         formula: ({speed}) => {return ((speed / 10) / undergroundTravelDivider);}
     },
     shipped: {
-        paceOptions:true,
+        paceOptionsActive:true,
         difficultTerrain: true,
         mainFormulaIsDays: true,
         formula: ({speed}) => {return (speed);}
     },
     default: {
-        paceOptions:true,
+        paceOptionsActive:true,
         difficultTerrain: true,
         mainFormulaIsDays: false,
         formula: ({speed}) => {return (speed) / 10;}
     },
     gallop:{
-        paceOptions:true,
+        paceOptionsActive:true,
         difficultTerrain: true,
         mainFormulaIsDays: true,
         formula: ({speed, overhour = 1, hoursPerDay, defaultSpeed}) => {
-            return ((speed* (hoursPerDay-overhour)) + (overhour*2*defaultSpeed*paceOptions.fast)) / 10;
+            return ((speed* (hoursPerDay-overhour)) + (overhour*2*defaultSpeed*paceOptions.fast.modifier)) / 10;
         }
     }
 }
+
+
 
 /*-----------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------
@@ -102,13 +112,20 @@ const buttonBlocker = (box,isTravel) =>  {
             gallopCheckbox.checked = true;
         }
 }
-
+const buttonActiveStageList = () => {
+    "считать стразу все"
+}
 
 let content = `
     <div style="display: flex; align-items: center;">
+    
     <div style="flex-grow: 1;">
         <p>Введите расстояние в милях:
         <input id="distance-input" type="number" style="width: calc(40% - 20px);"></p>
+    </div>
+    <div>
+        <p style="font-size: small;">📈 Путешествие в несколько этапов</p>
+        <input type="checkbox" id="stages" value="true" onclick="buttonActiveStageList()">
     </div>
     </div>
     <div style="display: flex; align-items: end; justify-content: space-around;">
@@ -166,7 +183,9 @@ let content = `
     
 </div>
 <script>
-    buttonBlocker = ${buttonBlocker.toString()}
+    buttonBlocker = ${buttonBlocker.toString()}\
+    buttonActiveStageList = ${buttonActiveStageList.toString()}
+    
 </script>
 `
 
@@ -184,7 +203,7 @@ const createMessage = () => {
     //основное сообщение
     let messageContent = `Время: ${days} дней и ${hours}. <br>
     Расстояние: ${distance} миль. <br>
-    ${paceDescriptions[selectedPace]}. <br>
+    ${paceOptions[selectedPace].description}. <br>
     Пересеченная местность: ${isDifficultTerrain ? "Да" : "Нет"}. <br>
     ${(isCrewedTransport ? "Использование 24 часового путешествия.<br>"  : "")}
     ${(isUndergroundTravel ? 'Путешествие в подземье. <br>' : '')}
@@ -207,6 +226,14 @@ const createMessage = () => {
 */
 ///////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////
+/*основной расчет*/
+///////////////////////////////////////////////////////
+const calculateDistance = () => {
+        
+}
 
 
 function roundDown(num) {
@@ -292,6 +319,8 @@ const mainDialogCallback = (html) => {
     let milesPerDay;
     console.log(1);
     
+
+
     
     let move = TypesOfMoves.default
     //Переключение типа формулы
@@ -306,7 +335,7 @@ const mainDialogCallback = (html) => {
     
 
     // Сначала рассчитываем скорость с учетом темпа
-    if (move.paceOptions) speed *= paceOptions[selectedPace]
+    if (move.paceOptionsActive) speed *= paceOptions[selectedPace].modifier
 
     if (move.mainFormulaIsDays) {
         milesPerDay = roundDown(move.formula({speed, mainSpeed, hoursPerDay, overhour ,defaultSpeed}))
@@ -373,7 +402,7 @@ await Dialog.prompt({
 
 
 
-
+/*
 
 
 const colspan = `colspan="${rolls.length + 1}"`;
@@ -399,77 +428,7 @@ content = `
 `;
 
 
-
-
-
-/**
- * Генерирует характеристики персонажа и выводит результат в виде таблицы.
- * Author: @Kekilla#7036 & KrishMero1792
- */
- 
-// Formula for rolling 
-const statString = '4d6kh3';
-
-// times to roll those stats
-const numRolls = 6;
-
-
-//////////////////////////////////////////
-// Don't touch anything below this line //
-//////////////////////////////////////////
-const stats = Array(numRolls).fill(0).map(e=>new Roll(statString).evaluate({async: false}));
-
-const rollData = stats[0].dice[0];
-const {faces, values: keptRolls, results: rolls} = rollData;
-const totalAverage = (faces/2 + 1) * keptRolls.length;
-const totalDeviation = faces/2;
-const totalLow = Math.ceil(totalAverage - totalDeviation);
-const totalHigh = Math.ceil(totalAverage + totalDeviation);
-
-const header = rolls.map((roll, index) => `<th>D${index + 1}</th>`).join('');
-
-let tableRows = '';
-let finalSum = 0;
-for(let {terms, total} of stats) {
-  tableRows += `<tr style="text-align:center">`;
-  tableRows += terms[0].results.map(({result, discarded}) => `<td style="${colorSetter(result, 1, faces, discarded)}">${result}</td>`).join('');
-  tableRows += `<td style="border-left:1px solid #000; ${colorSetter(total, totalLow, totalHigh)}">${total}</td></tr>`;
-  finalSum += total;
-}
-
-const colspan = `colspan="${rolls.length + 1}"`;
-const center = `text-align:center;`;
-
-content = `
-  <table>
-    <tr>
-      <td ${colspan}><h2 style="margin-bottom:0; ${center}">Значения характеристик</h2>
-      <div style="margin-bottom: 0.5rem; ${center}">${statString} были проброшены ${numRolls} раз.</div></td>
-    </tr>
-    <tr style="${center} border-bottom:1px solid #000">
-      ${header}
-      <th style="border-left:1px solid #000">Итог</th>
-    </tr>
-    ${tableRows}
-    <tr style="border-top: 1px solid #000">
-      <th colspan="${rolls.length}" style="${center}">Финальная сумма:</th>
-      <th style="${center}">${finalSum}</th>
-    </tr>
-
-  </table>
-`;
-
-
-ChatMessage.create({content});
-
-function colorSetter(number,low,high, discarded)
-{
-  if(discarded === true) return 'text-decoration:line-through;color:gray';
-  if(number <= low) return 'color:red';
-  if(number >= high) return 'color:green';
-  return '';
-}
-
+*/
 
 
 
