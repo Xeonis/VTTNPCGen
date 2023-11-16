@@ -65,6 +65,7 @@ const TypesOfMoves = {
         difficultTerrain: true,
         mainFormulaIsDays: false,
         formula: ({speed}) => {return (speed) / 10;},
+        placeholder: 'Базовый темп (при пустом поле)'
     },
     gallop:{
         default: true,
@@ -103,24 +104,18 @@ const simpleClendarModule = game.modules.get("foundryvtt-simple-calendar")?.acti
 ///////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////
 
-function handleRender (html) {
-
-
-}
 
 
 const buttonBlocker = (box,travel) =>  {
-    console.log("buttonBlocker on macro travel");
     const speedInput = document.getElementById('speed-input');
-    speedInput.placeholder = 'Базовый темп (при пустом поле)';
-    console.log(1);
+    speedInput.placeholder = TypesOfMoves.default.placeholder;
     //перебираю, включаю нужные и выключаю не нужные
     for (const key in TypesOfMoves) {
         if (Object.hasOwnProperty.call(TypesOfMoves, key)) {
             if (key == "default" ) continue; 
             const element = document.getElementById(`move-checkbox-${key}`);
-            if (element?.checked) continue;
-            if (travel == key) {
+            if (!element === null) continue;
+            if (travel == key && box.checked) {
                 speedInput.placeholder = TypesOfMoves[key].placeholder
                 element.checked = box.checked;
             } else {
@@ -132,6 +127,9 @@ const buttonBlocker = (box,travel) =>  {
 const buttonActiveStageList = () => {
    console.log( "считать стразу все")
 }
+
+
+
 //style="display: flex; align-items: center;"
 const content = () => {
     let moveCheckbox = []
@@ -139,81 +137,72 @@ const content = () => {
         if (Object.hasOwnProperty.call(TypesOfMoves, key)) {
             if (key == "default" ) continue; 
             const element = TypesOfMoves[key];
-            moveCheckbox.push(`<div><p class="move-checkbox">${element.label.replace(/ /g ,"<br>")}</p>
-                                <input type="checkbox" id="move-checkbox-${key}" onclick="buttonBlocker(this,'${key}')"></div>`)
+            moveCheckbox.push(`<div style="text-align: center;"><p class="move-checkbox">${element.label.replace(/ /g ,"<br>")}</p>
+                                <input type="checkbox" style="margin:auto" id="move-checkbox-${key}"></div>`)
         }
     }
-    return `<div class ="macro-travel">
-    
-    <div style="flex-grow: 1;">
-        <p>Введите расстояние в милях:
-        <input id="distance-input" type="number" style="width: calc(40% - 20px);"></p>
-    </div>
-    <div>
-        <p style="font-size: small;">📈 Путешествие в несколько этапов</p>
-        <input type="checkbox" id="stages" value="true" onclick="buttonActiveStageList()">
-    </div>
-    </div>
-    <div style="display: flex; align-items: end; justify-content: space-around;">${moveCheckbox.join("\n")}</div>
-    
-    <div style="flex-grow: 1; margin-right: 10px;">
-        <p>Введите скорость:
-        <input id="speed-input" type="number" placeholder="Базовый темп (при пустом поле)" style="width: calc(70% - 20px);"></p>
-    </div>
-    <div>
-        <div style="font-size: small;">
-            <p><input type="checkbox" id="difficult-terrain" value="true">🗺️Пересеченная местность</p>
-            <p><input type="checkbox" id="crewed-transport" value="true">🕛Использование 24 часового путешествия</p>
-            <p>
-                <input type="checkbox" id="dice-roll-checkbox" value="1d20">🎲Проверка 
-                <input id="dice-roll" type="number" placeholder="1d20" style="width: calc(18% - 20px);"> за каждый 
-                <select id="dice-roll-time" style="width: 15%">
-                    <option value="day" selected>день</option>
-                    <option value="hour" >час</option>
-                    <option value="week">неделю</option>
-                </select> путешествия
-            </p>
-            <p style="margin: auto;">
-                <input type="checkbox" id="overhour-checkbox" value="1">🌡️Форсированное путешествие +
-                <input id="overhour-value" type="number" placeholder="1" style="width: calc(15% - 20px);"> часов в день
-            </p>
-            <details style="margin: auto;" class = "info">
-                    <summary>О форсировании</summary>
-                    Работает 2 способами<br>
-                    1) Добавляет к перемещению в день часы перемещения и помечает сложность для каждого часа сверх нормы<br>
-                    <p style="font-size: smaller;margin: auto;"> (будте аккуратны) подсчет усталости мы тут не ведем</p>
-                    2) При галлопе и выключенной галочке указанное число считается как часы галопа в день
-            </details>
-    </div>
-    <div>
-        <p>Выберите темп:
-        <select id="pace" style="width: 50%">
-            <option value="fast">Быстрый</option>
-            <option value="normal" selected>Нормальный</option>
-            <option value="slow">Медленный</option>
-        </select></p>
-    </div>
+    // позсказки
+    let assist = (text) => {return `<i class="tip fas fa-info-circle" data-tooltip="${text}"></i>`}
 
-    
+
+
+    return `
+    <style>
+        .move-checkbox {
+            line-height: 1; font-size: smaller;
+        }
+    </style>
+    <div class ="macro-travel">
+        <div style="flex-grow: 1;">
+            <p>Введите расстояние в милях:
+            <input id="distance-input" type="number" style="width: calc(40% - 20px);"></p>
+        </div>
+        <div>
+            <p class="move-checkbox";">📈 Путешествие в несколько этапов</p>
+            <input type="checkbox" id="stages" value="true" onclick="buttonActiveStageList()">
+        </div>
+        </div>
+        <div style="display: flex; align-items: end; justify-content: space-around;">${moveCheckbox.join("\n")}</div>
+        <div style="flex-grow: 1; margin-right: 10px;">
+            <p>Введите скорость:
+            <input id="speed-input" type="number" placeholder="Базовый темп (при пустом поле)" style="width: calc(70% - 20px);"></p>
+        </div>
+        <div>
+            <div style="font-size: small;">
+                <p><input type="checkbox" id="difficult-terrain" value="true">🗺️Пересеченная местность</p>
+                <p><input type="checkbox" id="crewed-transport" value="true">🕛Использование 24 часового путешествия</p>
+                <p>
+                    <input type="checkbox" id="dice-roll-checkbox" value="1d20">🎲Проверка 
+                    <input id="dice-roll" type="number" placeholder="1d20" style="width: calc(18% - 20px);"> за каждый 
+                    <select id="dice-roll-time" style="width: 15%">
+                        <option value="day" selected>день</option>
+                        <option value="hour" >час</option>
+                        <option value="week">неделю</option>
+                    </select> путешествия
+                </p>
+                <p style="margin: auto;">
+                    <input type="checkbox" id="overhour-checkbox" value="1">🌡️Форсированное путешествие +
+                    <input id="overhour-value" type="number" placeholder="1" style="width: calc(15% - 20px);"> часов в день 
+                </p>
+                
+                <details style="margin: auto;" class = "info">
+                        <summary>О форсировании</summary>
+                        Работает 2 способами<br>
+                        1) Добавляет к перемещению в день часы перемещения и помечает сложность для каждого часа сверх нормы<br>
+                        <p style="font-size: smaller;margin: auto;"> (будте аккуратны) подсчет усталости мы тут не ведем</p>
+                        2) При галлопе и выключенной галочке указанное число считается как часы галопа в день
+                </details>
+        </div>
+        <div>
+            <p>Выберите темп:
+            <select id="pace" style="width: 50%">
+                <option value="fast">Быстрый</option>
+                <option value="normal" selected>Нормальный</option>
+                <option value="slow">Медленный</option>
+            </select></p>
+        </div>   
 </div>
 
-<script type="text/javascript">
-let buttonActiveStageList = ${buttonActiveStageList.toString()};
-
-let TypesOfMoves = 0 || ${TypesOfMoves.toString()};
-
-</script>
-<style>
-    .macro-travel .move-checkbox {
-        line-height: 1; font-size: smaller;
-    }
-    .macro-travel .info {
-    flex: 0 0 100%;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    }
-</style>
 
 `
 } 
@@ -229,7 +218,7 @@ let TypesOfMoves = 0 || ${TypesOfMoves.toString()};
 ///////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////
 
-const createMessage = ({days,hours,distance,selectedPace,isCrewedTransport,isUndergroundTravel,userEnteredSpeed,milesPerHour,milesPerDay}) => {
+const createMessage = ({days,hours,distance,selectedPace,isCrewedTransport,isUndergroundTravel,userEnteredSpeed,milesPerHour,milesPerDay,isDifficultTerrain}) => {
     //основное сообщение
     let messageContent = `Время: ${days} дней и ${hours}. <br>
     Расстояние: ${distance} миль. <br>
@@ -265,6 +254,10 @@ const calculateDistance = () => {
         
 }
 
+function toFix (number) {
+    const part = number - Math.trunc(number)
+    return  Math.floor(number) + (part > 0.05)? part.toFixed(1) : 0
+}
 
 function roundDown(num) {
     return Math.floor(num);
@@ -329,21 +322,23 @@ const mainDialogCallback = (html) => {
     data.isDifficultTerrain = $(html).find("#difficult-terrain").is(":checked") || false;
     data.isCrewedTransport = $(html).find("#crewed-transport").is(":checked") || false;
     data.isUndergroundTravel = $(html).find("#underground-travel").is(":checked") || false;
-    const isGallop = $(html).find("#gallop-travel").is(":checked") || false;
+    data.isGallop = $(html).find("#gallop-travel").is(":checked") || false;
 
     //Форсированное перемещение
     const isOverhourMovement = $(html).find("#overhour-checkbox").is(":checked") || false
     const overhour = parseFloat($(html).find("#overhour-value").val()) || 1;
-    
+    data.isOverhourMovement = isOverhourMovement;
+    data.overhour = overhour;
     //бросок кубика каждый
-    const isCheckedDiceRoll = $(html).find("#dice-roll-checkbox").is(":checked") || false
-    const diceRollTime = $(html).find("#dice-roll-time").val() || "day"
-    const diceRoll = $(html).find("#dice-roll").val() || "1d20"
+    data.isCheckedDiceRoll = $(html).find("#dice-roll-checkbox").is(":checked") || false
+    data.diceRollTime = $(html).find("#dice-roll-time").val() || "day"
+    data.diceRoll = $(html).find("#dice-roll").val() || "1d20"
 
     let speed = data.userEnteredSpeed || defaultSpeed;
     let mainSpeed = speed;
     let hoursPerDay = data.isCrewedTransport ? crewedTransportHoursPerDay : (defaultHoursPerDay + ((isOverhourMovement)? overhour : 0)) ;
-
+    data.mainSpeed = mainSpeed;
+    data.hoursPerDay = hoursPerDay;
     let milesPerHour;
     let milesPerDay;
     console.log(1);
@@ -357,7 +352,7 @@ const mainDialogCallback = (html) => {
         move = TypesOfMoves.underground
     }else if (data.isSeaTravel){
         move = TypesOfMoves.shipped
-    }else if (isGallop){
+    }else if (data.isGallop){
         move = TypesOfMoves.gallop
     }
 
@@ -370,9 +365,9 @@ const mainDialogCallback = (html) => {
         milesPerDay = roundDown(move.formula({speed, mainSpeed, hoursPerDay, overhour ,defaultSpeed}))
         // Затем применяем модификатор местности   
         if (data.isDifficultTerrain && move.difficultTerrain) milesPerDay *= difficultyMovement;
-        milesPerHour = (milesPerDay / hoursPerDay).toFixed(1)
+        milesPerHour = toFix(milesPerDay / hoursPerDay)
     }else{
-        milesPerHour = move.formula({speed, mainSpeed, hoursPerDay, overhour,defaultSpeed})
+        milesPerHour = toFix(move.formula({speed, mainSpeed, hoursPerDay, overhour,defaultSpeed}))
         // Затем применяем модификатор местности   
         if (data.isDifficultTerrain && move.difficultTerrain) milesPerHour *= difficultyMovement;
         milesPerDay = roundDown(milesPerHour * hoursPerDay)
@@ -385,9 +380,9 @@ const mainDialogCallback = (html) => {
     data.milesPerHour = milesPerHour
     data.days = Math.floor(totalDays);
     data.hours = convertHoursToTime((totalDays - data.days) * hoursPerDay);
-    data.weeks = Math.floor(days/weekLength)
-    data.countRolls = countRollsForumula({diceRollTime, weeks:data.weeks, days:data.days, totalDays, hoursPerDay,diceRoll});
-    
+    data.weeks = Math.floor(data.days/weekLength)
+    data.countRolls = countRollsForumula(data);
+    console.log(data);
     createMessage(data)
 }
 
@@ -397,8 +392,23 @@ const mainDialogCallback = (html) => {
 /*ОСНОВНОЕ ДИАЛОГОВОЕ ОКНО*/
 ///////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////
- 
-new Dialog({
+
+
+//обработчик событий в макросе
+const handleRender = (html) => {
+    console.log(1);
+    for (const key in TypesOfMoves) {
+        if (Object.hasOwnProperty.call(TypesOfMoves, key)) {
+            if (key == "default" ) continue; 
+            html.on('click',`#move-checkbox-${key}`, (htmlc) => buttonBlocker(htmlc.target,key));
+        }
+    }
+    
+}
+
+
+//собственно окошко
+const mainWindow = new Dialog({
     title: "Расчет времени путешествия",
     content,
     buttons: {
@@ -413,8 +423,10 @@ new Dialog({
     close: html => console.log("This always is logged no matter which option is chosen")    
 },{
     resizable:true, 
-  }
-).render(true);
+  })
+mainWindow.render(true);
+
+
 
 ///////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////
