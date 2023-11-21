@@ -18,7 +18,7 @@ crewedTransportHoursPerDay : 24, // часов в сутках
 undergroundTravelDivider : 4, //модификатор подземья
 difficultyMovement : 0.5, //модификатор трудной местности
 weekLength : 7, // количество дней в неделе
-overhourCheckModifier: "0", //модификатор сложности бросков для форсорованного марша
+overhourCheckModifier: "0", //модификатор сложности бросков для форсированного марша
 
 
 paceOptions : {
@@ -300,7 +300,7 @@ const countRollsForumula = ({diceRollTime, weeks, days, totalDays, hoursPerDay,d
             CountRolls = days
             break;
     }
-    return Array(CountRolls).fill(new Roll(`${diceRoll}`).evaluate({async: false})._total);
+    return Array(CountRolls).fill(new Roll(`${diceRoll}`).evaluate({async: false}).result);
 };
 
 
@@ -440,29 +440,6 @@ mainWindow.render(true);
 ///////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////
 
-for ()
-
-
-<table>
-<tr>
-  <td ${colspan}><h2 style="margin-bottom:0; ${center}">Значения характеристик</h2>
-  
-</tr>
-<tr style="${center} border-bottom:1px solid #000">
-  ${header}
-  <th style="border-left:1px solid #000">Итог</th>
-</tr>
-${tableRows}
-<tr style="border-top: 1px solid #000">
-  <th colspan="${rolls.length}" style="${center}">Финальная сумма:</th>
-  <th style="${center}">${finalSum}</th>
-</tr>
-
-</table>
-
-
-
-
 
 
 let tableRows = '';
@@ -483,6 +460,42 @@ content = `
       <td ${colspan}><h2 style="margin-bottom:0; ${center}">Значения характеристик</h2>
       <div style="margin-bottom: 0.5rem; ${center}">${statString} были проброшены ${numRolls} раз.</div></td>
     </tr>
+    ${tableRows}
+
+
+  </table>
+`;
+const rollData = stats[0].dice[0];
+const {faces, values: keptRolls, results: rolls} = rollData;
+const totalAverage = (faces/2 + 1) * keptRolls.length;
+const totalDeviation = faces/2;
+const totalLow = Math.ceil(totalAverage - totalDeviation);
+const totalHigh = Math.ceil(totalAverage + totalDeviation);
+
+const header = rolls.map((roll, index) => `<th>D${index + 1}</th>`).join('');
+
+let tableRows = '';
+let finalSum = 0;
+
+
+
+for(let {terms, total} of data.) {
+  tableRows += `<tr style="text-align:center">`;
+  tableRows += terms[0].results.map(({result, discarded}) => `<td style="${colorSetter(result, 1, faces, discarded)}">${result}</td>`).join('');
+  tableRows += `<td style="border-left:1px solid #000; ${colorSetter(total, totalLow, totalHigh)}">${total}</td></tr>`;
+  finalSum += total;
+}
+
+const colspan = `colspan="${rolls.length + 1}"`;
+const center = `text-align:center;`;
+
+content = `
+
+
+  <table>
+    <tr>
+      <td ${colspan}><h2 style="margin-bottom:0; ${center}">Значения характеристик</h2>
+    </tr>
     <tr style="${center} border-bottom:1px solid #000">
       ${header}
       <th style="border-left:1px solid #000">Итог</th>
@@ -495,6 +508,14 @@ content = `
 
   </table>
 `;
+
+function colorSetter(number,low,high, discarded)
+{
+  if(discarded === true) return 'text-decoration:line-through;color:gray';
+  if(number <= low) return 'color:red';
+  if(number >= high) return 'color:green';
+  return '';
+}
 
 
 
