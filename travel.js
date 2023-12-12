@@ -291,6 +291,7 @@ const countRollsForumula = ({diceRollTime, weeks, days, totalDays, hoursPerDay,d
     let CountRolls = 0;
     switch (diceRollTime) {
         case "week":
+            rollTime = "неделю"
             CountRolls = weeks
             break;
         case "hour":
@@ -300,7 +301,7 @@ const countRollsForumula = ({diceRollTime, weeks, days, totalDays, hoursPerDay,d
             CountRolls = days
             break;
     }
-    return Array(CountRolls).fill(new Roll(`${diceRoll}`).evaluate({async: false}).result);
+    return {type: ,list:Array(CountRolls).fill(new Roll(`${diceRoll}`).evaluate({async: false}).result)};
 };
 
 
@@ -352,8 +353,6 @@ const mainDialogCallback = (html) => {
     console.log(1);
     
 
-    let
-    
     let move = settings.TypesOfMoves.default
     //Переключение типа формулы
     if (data.isUndergroundTravel) {
@@ -490,11 +489,9 @@ const colspan = `colspan="${rolls.length + 1}"`;
 const center = `text-align:center;`;
 
 content = `
-
-
   <table>
     <tr>
-      <td ${colspan}><h2 style="margin-bottom:0; ${center}">Значения характеристик</h2>
+      <td ${colspan}><h2 style="margin-bottom:0; ${center}">Проверки каждый ${}</h2>
     </tr>
     <tr style="${center} border-bottom:1px solid #000">
       ${header}
