@@ -290,27 +290,7 @@ function QuickApp:modeSpeedManual()
 end
 
 
--- АВТО | Заданный уровень СО2 --
--- СО2 
-function QuickApp:Button_CO2(event)
-    local button = tostring(event.elementName)
-  
-    local ButtonHolder = {
-        button_ID_14_2_m50 = -50,
-        button_ID_14_2_m10 = -10,
-        button_ID_14_2_10 = 10,
-        button_ID_14_2_50 = 50,
-    }
-    if (ButtonHolder[button] == nil) 
-        return;
-    end;
-    local x = ButtonHolder[button]
-    local currentValue = tonumber(self:getVariable("target_CO2"))
-    if currentValue+x >= co2Min and currentValue+x <= co2Max then
-        self:setVariable("target_CO2", currentValue+x)
-        self:updateView ("A_Info_CO2", "text", "АВТО | Заданный уровень СО2, ppm: " .. currentValue+x)
-    end
-end
+
 
 
 -- АВТО | Скорость --
@@ -519,25 +499,9 @@ end
 
 
 1) мне нужно получить температуру с устройств всех который я перечислю ид
-LIST_TEMPERATURE_SENSORS_ID = {
 
-}
 
-function getSensorsValue(ListOfSensors) 
-    local max = 0
-    local min = 0
-    local avg = 0
-    local i   = 0
-    for k,v in pairs(ListOfSensors) do
-        local value = fibaro.getValue(v, "value")
-        if max < value do max = value end
-        if min > value do min = value end
-        i = i + 1
-        avg = avg + value
-    end
-    avg = avg/id
-    return {avg, min, max}
-end
+
 
 
 function getListOfKeys (listOfProperty) 
@@ -545,25 +509,8 @@ function getListOfKeys (listOfProperty)
 end
 
 
--- АВТО | Скорость --
+-- Выбор режима счета 
 -- СО2 
-function QuickApp:Button_SetValueOfCO2(event)
-    local button = tostring(event.elementName)
-    local ButtonHolder = {
-        button_ID_14_2_ =  
-    }
-    if (ButtonHolder[button] == nil) return; end;
-    local x = ButtonHolder[button]
-    local currentValue = tonumber(self:getVariable("target_CO2"))
-    
-    if currentValue+x >= co2Min and currentValue+x <= co2Max then
-
-    end
-end
-
-self:updateView ("temperature", "text", "Подогрев входа воздуха: " .. currentValue+x .. " °C")
-
-function edi
 
 
 
@@ -573,7 +520,7 @@ function edi
 
 
 
-    
+
 --[[ Модель ПВВ: SistemAir
 
     * Режим работы:
@@ -614,9 +561,37 @@ basicSettings = {
 	temperatureID = nil			    -- ID температуры ПВУ
 }
 
+
+
+LIST_CO2_SENSORS_ID = {
+
+}
+-- LABELS = {infoTemperatureLabel, infoSpeedLabel,silenceModeLabel}
+--!USEGLOBAL = {lastValue = 2, silenceMode = false, target_CO2 = 400, }
+MAX_SILENCE_MODE = 2
+modeDevice = {label = "РУЧНОЙ"} -- заглушка(для возможного добавления функционала)
 timeSync = 3
 
 ---- ОСНОВНЫЕ ----
+-- Вспомогательные функции --
+function getSensorsValue(ListOfSensors) 
+    local max = 0
+    local min = 0
+    local avg = 0
+    local i   = 0
+    for k,v in pairs(ListOfSensors) do
+        local value = fibaro.getValue(v, "value")
+        if value == nil then goto continue end
+        if max < value then max = value end
+        if min > value then min = value end
+        i = i + 1
+        avg = avg + value
+        ::continue::
+    end
+    avg = avg/id
+    return {avg, min, max}
+end
+
 
 -- Первый запуск
 function QuickApp:onInit()
@@ -637,20 +612,15 @@ end
 
 -- Основная функция
 function QuickApp:work()
-
     -- self:debug("work")
     self:sync()
-    
     hub.setTimeout(3*1000, function() self:work() end)
-
 end
 
 
 -- Обновление состояния
 function QuickApp:sync()
-
     self:debug("sync")
-
     -- Обновление состояние статуса ПВУ
     local valueSpeed = tonumber(hub.getValue(basicSettings.fanID, "value"))
     if (valueSpeed >= 2 ) then 
@@ -673,7 +643,7 @@ function QuickApp:sync()
     end
 
     -- Обновление информации о скорости ПВУ
-    local textSpeed = "Скорость ПВУ: "
+    local textSpeed = modeDevice.label .. " | Скорость ПВУ: "
     if (valueSpeed == 0 or valueSpeed == 1) then
         textSpeed = textSpeed .. "ВЫКЛ"
     elseif ( valueSpeed == 2 ) then
@@ -685,16 +655,222 @@ function QuickApp:sync()
     else
         self:debug("Неизвестная скорость - " .. valueSpeed)
     end
-    self: updateView ("infoSpeed", "text", textSpeed)
+    self: updateView ("infoSpeedLabel", "text", textSpeed)
 
     -- Обновление информации о подогреваемой температуры
-    self:updateView ("infoTemperature", "text", "Подогрев воздуха до: " .. tonumber(hub.getValue(basicSettings.temperatureID, "value")) .. " °C")
+    self:updateView ("infoTemperatureLabel", "text", "Подогрев воздуха до: " .. tonumber(hub.getValue(basicSettings.temperatureID, "value")) .. " °C")
 
 end
 
 ---- КНОПКИ ----
 
+-- Температура подогреваемого воздуха --
+-- Увеличение температуры воздуха
+function QuickApp:tempAdd()
+    local x = 1
+    local currentValue = tonumber(hub.getValue(basicSettings.temperatureID, "value"))
+    if currentValue+x >= temperatureMin and currentValue+x <= temperatureMax then 
+        hub.call(basicSettings.temperatureID, "setValue", currentValue+x)
+        self:updateView ("infoTemperatureLabel", "text", "Подогрев воздуха до: " .. currentValue+x .. " °C")
+    else
+        hub.call(basicSettings.temperatureID, "setValue", temperatureMax)
+        self:updateView ("infoTemperatureLabel", "text", "Подогрев воздуха до: " .. temperatureMax .. " °C")
+    end
+end
+-- Уменьшение температуры воздуха
+function QuickApp:tempRemove()
+    local x = -1
+    local currentValue = tonumber(hub.getValue(basicSettings.temperatureID, "value"))
+    if currentValue+x >= temperatureMin and currentValue+x <= temperatureMax then 
+        hub.call(basicSettings.temperatureID, "setValue", currentValue+x)
+        self:updateView ("infoTemperatureLabel", "text", "Подогрев воздуха до: " .. currentValue+x .. " °C")
+    else
+        hub.call(basicSettings.temperatureID, "setValue", temperatureMin)
+        self:updateView ("infoTemperatureLabel", "text", "Подогрев воздуха до: " .. temperatureMin .. " °C")
+    end
+end
+
+
+-- Переключение вентиляции АВТО/РУЧНОЙ--
+function QuickApp:Button_VentMode()
+    local button = tostring(event.elementName)
+    -- CHECK PLACEHOLDER
+    --Поменять ид под конкретное устройство или поменять ид устройств
+    local ButtonHolder = {
+        button_ID_14_2_auto = {value = false, label = "Активорован Тихий режим"},
+        button_ID_14_2_manual = {value = true, label = "Тихий режим выключен"},
+    }
+    if (ButtonHolder[button] == nil) 
+        return;
+    end;
+    local buttonProperties = ButtonHolder[button]
+    self: updateView ("silenceModeLabel", "text", buttonProperties.label)
+    self:setVariable("silenceMode", buttonProperties.value)
+end
+
+
+
+-- АВТО | Заданный уровень СО2 --
+-- СО2 
+function QuickApp:Button_CO2(event)
+    local button = tostring(event.elementName)
+    -- CHECK PLACEHOLDER
+    --Поменять ид под конкретное устройство или поменять ид устройств
+    local ButtonHolder = {
+        button_ID_14_2_m50 = -50,
+        button_ID_14_2_m10 = -10,
+        button_ID_14_2_10 = 10,
+        button_ID_14_2_50 = 50,
+    }
+    if (ButtonHolder[button] == nil) 
+        return;
+    end;
+    local x = ButtonHolder[button]
+    local currentValue = tonumber(self:getVariable("target_CO2"))
+    if currentValue+x >= co2Min and currentValue+x <= co2Max then
+        self:setVariable("target_CO2", currentValue+x)
+        self:updateView ("A_Info_CO2", "text", modeDevice.label .. "| Заданный уровень СО2, ppm: " .. currentValue+x)
+    end
+end
+
+
 -- Регулировка скорости --
+-- Низкая
+function QuickApp:Button_Speed()
+    local button = tostring(event.elementName)
+    -- CHECK PLACEHOLDER
+    --Поменять ид под конкретное устройство или поменять ид устройств
+    local ButtonHolder = {
+        button_ID_14_2_off = {value = 0, label = "ВЫКЛ"},
+        button_ID_14_2_2 = {value = 2, label = "Низкая"},
+        button_ID_14_2_3 = {value = 3, label = "Средняя"},
+        button_ID_14_2_4 = {value = 4, label = "Высокая"},
+    }
+    if (ButtonHolder[button] == nil) 
+        return;
+    end;
+    local buttonProperties = ButtonHolder[button]
+    local valueSpeed = tonumber(hub.getValue(basicSettings.fanID, "value"))
+    -- проверка на режим
+    if 
+
+    -- Установка нужной скорости
+    if (valueSpeed ~= buttonProperties.value) then
+        hub.call(basicSettings.fanID,  "setValue", buttonProperties.value)
+    end
+
+    -- Обновление статуса
+    if not(hub.getValue(self.id, "value")) then 
+        self:updateProperty("value", true)
+    end
+
+    -- Обновление информации о скорости ПВУ
+    local textSpeed = modeDevice.label .. "| Скорость ПВУ: " .. buttonProperties.label
+    self:updateView("infoSpeedLabel", "text", textSpeed)
+
+    -- Обновление последней установленной скорости
+    self:setVariable("lastValue", buttonProperties.value)
+
+    -- Отладка
+    self:debug("Установленая скорость - " .. valueSpeed)
+    self:debug("Текст - " .. textSpeed)
+     
+end
+
+
+-- Тихий тежим включение и выключение--
+function QuickApp:Button_SilenceMode()
+    local button = tostring(event.elementName)
+    -- CHECK PLACEHOLDER
+    --Поменять ид под конкретное устройство или поменять ид устройств
+    local ButtonHolder = {
+        button_ID_14_2_off = {value = false, label = "Активорован Тихий режим"},
+        button_ID_14_2_on = {value = true, label = "Тихий режим выключен"},
+    }
+    if (ButtonHolder[button] == nil) 
+        return;
+    end;
+    local buttonProperties = ButtonHolder[button]
+    self: updateView ("silenceModeLabel", "text", buttonProperties.label)
+    self:setVariable("silenceMode", buttonProperties.value)
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Статус --
+-- ВКЛ
+function QuickApp:turnOn()
+    self:debug("binary switch turned on")
+    local lastValue = tonumber(self:getVariable("lastValue"));
+    hub.call(basicSettings.fanID, "setValue", lastValue)
+    self:updateProperty("value", true)
+
+    -- Обновление информации о скорости ПВУ
+    local textSpeed = "Скорость ПВУ: "
+    if ( lastValue == 2 ) then
+        textSpeed = textSpeed .. "Низкая"
+    elseif ( lastValue == 3 ) then
+        textSpeed = textSpeed .. "Средняя"
+    elseif ( lastValue == 4 ) then
+        textSpeed = textSpeed .. "Высокая"
+    else
+        self:debug("Неизвестная скорость - " .. lastValue)
+    end
+    self:updateView("infoSpeedLabel", "text", textSpeed)
+
+end
+
+-- ВЫКЛ
+function QuickApp:turnOff()
+    self:debug("binary switch turned off")
+    hub.call(basicSettings.fanID, "setValue", 0)
+    self:updateProperty("value", false)
+    self: updateView ("infoSpeedLabel", "text", "Скорость ПВУ: ВЫКЛ")
+end
+
+
+
 -- Низкая
 function QuickApp:speedLow()
 
@@ -722,7 +898,7 @@ function QuickApp:speedLow()
     else
         self:debug("Неизвестная скорость - " .. valueSpeed)
     end
-    self:updateView("infoSpeed", "text", textSpeed)
+    self:updateView("infoSpeedLabel", "text", textSpeed)
 
     -- Обновление последней установленной скорости
     self:setVariable("lastValue", var)
@@ -760,7 +936,7 @@ function QuickApp:speedMedium()
     else
         self:debug("Неизвестная скорость - " .. valueSpeed)
     end
-    self:updateView("infoSpeed", "text", textSpeed)
+    self:updateView("infoSpeedLabel", "text", textSpeed)
 
     -- Обновление последней установленной скорости
     self:setVariable("lastValue", var)
@@ -798,7 +974,7 @@ function QuickApp:speedHigh()
     else
         self:debug("Неизвестная скорость - " .. valueSpeed)
     end
-    self:updateView("infoSpeed", "text", textSpeed)
+    self:updateView("infoSpeedLabel", "text", textSpeed)
 
     -- Обновление последней установленной скорости
     self:setVariable("lastValue", var)
@@ -808,67 +984,3 @@ function QuickApp:speedHigh()
     self:debug("Текст - " .. textSpeed)
      
 end
-
-
-
-
--- Статус --
--- ВКЛ
-function QuickApp:turnOn()
-    self:debug("binary switch turned on")
-    local lastValue = tonumber(self:getVariable("lastValue"));
-    hub.call(basicSettings.fanID, "setValue", lastValue)
-    self:updateProperty("value", true)
-
-    -- Обновление информации о скорости ПВУ
-    local textSpeed = "Скорость ПВУ: "
-    if ( lastValue == 2 ) then
-        textSpeed = textSpeed .. "Низкая"
-    elseif ( lastValue == 3 ) then
-        textSpeed = textSpeed .. "Средняя"
-    elseif ( lastValue == 4 ) then
-        textSpeed = textSpeed .. "Высокая"
-    else
-        self:debug("Неизвестная скорость - " .. lastValue)
-    end
-    self:updateView("infoSpeed", "text", textSpeed)
-
-end
-
--- ВЫКЛ
-function QuickApp:turnOff()
-    self:debug("binary switch turned off")
-    hub.call(basicSettings.fanID, "setValue", 0)
-    self:updateProperty("value", false)
-    self: updateView ("infoSpeed", "text", "Скорость ПВУ: ВЫКЛ")
-end
-
-
-
--- Температура подогреваемого воздуха --
--- Увеличение температуры воздуха
-function QuickApp:tempAdd()
-    local x = 1
-    local currentValue = tonumber(hub.getValue(basicSettings.temperatureID, "value"))
-    if currentValue+x >= temperatureMin and currentValue+x <= temperatureMax then 
-        hub.call(basicSettings.temperatureID, "setValue", currentValue+x)
-        self:updateView ("infoTemperature", "text", "Подогрев воздуха до: " .. currentValue+x .. " °C")
-    else
-        hub.call(basicSettings.temperatureID, "setValue", temperatureMax)
-        self:updateView ("infoTemperature", "text", "Подогрев воздуха до: " .. temperatureMax .. " °C")
-    end
-end
--- Уменьшение температуры воздуха
-function QuickApp:tempRemove()
-    local x = -1
-    local currentValue = tonumber(hub.getValue(basicSettings.temperatureID, "value"))
-    if currentValue+x >= temperatureMin and currentValue+x <= temperatureMax then 
-        hub.call(basicSettings.temperatureID, "setValue", currentValue+x)
-        self:updateView ("infoTemperature", "text", "Подогрев воздуха до: " .. currentValue+x .. " °C")
-    else
-        hub.call(basicSettings.temperatureID, "setValue", temperatureMin)
-        self:updateView ("infoTemperature", "text", "Подогрев воздуха до: " .. temperatureMin .. " °C")
-    end
-end
-
-
