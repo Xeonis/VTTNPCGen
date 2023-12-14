@@ -1,3 +1,4 @@
+---@diagnostic disable: lowercase-global
 --[[
 1. Создать ВУ типа РЕЛЕ 
 2. Добавить кнопки/ярлыки: 
@@ -161,7 +162,9 @@ function QuickApp:setSpeed()
     
     if QuickApp.supportSpeed[valueSpeed] == nil then
         self:debug("Неизвестная скорость - " .. valueSpeed) end 
-
+    if (valueSpeed ~= buttonProperties.value) then
+        hub.call(basicSettings.fanID,  "setValue", buttonProperties.value)
+    end
      if 
 end;
 
@@ -265,14 +268,11 @@ function QuickApp:updateSpeedInfoModeLabel () self:updateView ("speedInfoModeLab
 
 
 
-
-
 ---- КНОПКИ ----
 ----------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------
-----------------------------------------------
 -- Температура подогреваемого воздуха --
 -- Переключение режима обогрева
 function QuickApp:button_mode_switsher(event)
@@ -315,7 +315,7 @@ function QuickApp:button_temperature(event)
     elseif ButtonHolder2[button] ~= nil then
         local x = ButtonHolder[button]
         -- допиши меня
-        Broke
+        Broke]
         self:debug("PUSHED BUTTON" .. event.elementName)
         self:updateInfoAutoLabel()
     else
@@ -395,39 +395,41 @@ function QuickApp:Button_Speed(event)
     -- CHECK PLACEHOLDER
     --Поменять ид под конкретное устройство или поменять ид устройств
     local ButtonHolder = {
-        button_vent_off = {value = 0, label = "ВЫКЛ"},
-        button_vent_2 = {value = 2, label = "Низкая"},
-        button_vent_3 = {value = 3, label = "Средняя"},
-        button_vent_4 = {value = 4, label = "Высокая"},
+        button_vent_auto = self.supportSpeed[0],--прсото чтобы не забыть что такая кнопка есть
+        button_vent_off = self.supportSpeed[0],
+        button_vent_2 = self.supportSpeed[2],
+        button_vent_3 = self.supportSpeed[3],
+        button_vent_4 = self.supportSpeed[4],
     }
-    if (ButtonHolder[button] == nil) then
+    if (button == "button_vent_auto") then
+        self.modeDeviceSpeed = self.supportSpeedMode.auto
+        self:updateSpeedInfoModeLabel()
+        self:updateSpeedLabel()
         return;
-    end;
-    local buttonProperties = ButtonHolder[button]
-    local valueSpeed = tonumber(hub.getValue(basicSettings.fanID, "value"))
-    -- проверка на режим
-     
-    -- Установка нужной скорости
-    if (valueSpeed ~= buttonProperties.value) then
-        hub.call(basicSettings.fanID,  "setValue", buttonProperties.value)
     end
+    if (ButtonHolder[button] == nil) then self:error("BAD INPUT BUTTON") return; end;
+
+    local buttonProperties = ButtonHolder[button]
+    local valueSpeed = tonumber(self:getVariable("lastValue"))
+    local silentMode = tonumber(self:getVariable("silenceMode"))
+    
+    if valueSpeed ~= buttonProperties then
+        self.modeDeviceSpeed = self.supportSpeedMode.manual
+        if silentMode > 0 and buttonProperties > MAX_SILENCE_MODE then
+            valueSpeed = MAX_SILENCE_MODE;
+        end
+        self:setVariable("lastValue", buttonProperties.value)
+    end
+    self:debug("Установленая скорость - " .. valueSpeed, "Текст - " .. textSpeed)
+
+
+    speedlabel Broke] -- нужно обновить но в этот момент резульнат еще не применится
+
 
     -- Обновление статуса
     if not(hub.getValue(self.id, "value")) then 
         self:updateProperty("value", true)
-    end
-
-    -- Обновление информации о скорости ПВУ
-    local textSpeed = self.modeDevice.label .. "| Скорость ПВУ: " .. buttonProperties.label
-    self:updateView("infoSpeedLabel", "text", textSpeed)
-
-    -- Обновление последней установленной скорости
-    self:setVariable("lastValue", buttonProperties.value)
-
-    -- Отладка
-    self:debug("Установленая скорость - " .. valueSpeed)
-    self:debug("Текст - " .. textSpeed)
-     
+    end     
 end
 
 -- Тихий тежим включение и выключение--
@@ -436,8 +438,8 @@ function QuickApp:Button_SilenceMode(event)
     -- CHECK PLACEHOLDER
     --Поменять ид под конкретное устройство или поменять ид устройств
     local ButtonHolder = {
-        button_silence_off = {value = false, label = "Активорован Тихий режим"},
-        button_ID_14_2_on = {value = true, label = "Тихий режим выключен"},
+        button_silence_off = {value = 0, label = "Активорован Тихий режим"},
+        button_ID_14_2_on = {value = 1, label = "Тихий режим выключен"},
     }
     if (ButtonHolder[button] == nil) then
         return;
