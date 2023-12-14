@@ -69,15 +69,15 @@ for k,_ in pairs(THERMOSTATE_MODES) do
 end
 
 ACCEPTED_MODES = {
-    manual      = {label: "АВТО"}
-    auto        = {label: ""}
+    manual      = {label = "АВТО"},
+    auto        = {label = ""}
 }
 
 ACCEPDED_SPEED_MODES = {
-    auto        = {id: 0, label: "АВТО"}
-    first       = {id: 1, label: "40%"}
-    second      = {id: 2, label: "60%"}
-    third       = {id: 3, label: "100%"}
+    auto        = {id = 0, label: "АВТО"},
+    first       = {id = 1, label: "40%"},
+    second      = {id = 2, label =  "60%"},
+    third       = {id = 3, label = "100%"}
 }
 
 ---------------------------------------------------------------------------------
@@ -501,9 +501,6 @@ end
 1) мне нужно получить температуру с устройств всех который я перечислю ид
 
 
-
-
-
 function getListOfKeys (listOfProperty) 
     
 end
@@ -532,11 +529,9 @@ end
 
    
         
-   
-   
 
-    * (ярлык) "" 
 
+    
 
     + * (ярлык) "Регулировка температуры:" [РУЧНАЯ / АВТО] - infoMainLabel
     + * (кнопки) [АВТО][РУЧН] - button_mode_switsher {button_mode_auto, button_mode_manual}
@@ -544,15 +539,16 @@ end
     -(думай) * (кнопки) [MIN][AVR][MAX][+][-] 
             button_temp_max,button_temp_min,button_temp_avg,button_temp_minus,button_temp_plus onrelease: button_temperature
             где x - результат мин, ср, макс; y - значения дельты, z - результат x+y 
-            
+
     + * (ярлык) "РУЧНАЯ | t воздуха:"[значение]" ℃" - infoManualLabel
     + * (кнопки) [-][+] - on released button_temp_manual {button_temp_manual_m,button_temp_manual_p}
 
+    * (ярлык) "" 
 
 
     * (ярлык)   "Регулировка скорости: " [РУЧНАЯ / АВТО] - speedInfoModeLabel
-    * (ярлык) "Текущая скорость: "[значение] - speedlabel
-    * (кнопки) [авто][выкл][низкая][средняя][высокая] - on released Button_Speed {button_vent_off, button_vent_2,button_vent_3,button_vent_4}
+    + * (ярлык) "Текущая скорость: "[значение] - speedlabel
+    + * (кнопки) [авто][выкл][низкая][средняя][высокая] - on released Button_Speed {button_vent_off, button_vent_2,button_vent_3,button_vent_4}
 
 
 
@@ -590,7 +586,7 @@ end
 
 -- LABELS = {infoTemperatureLabel, infoSpeedLabel,silenceModeLabel}
 --!USEGLOBAL = {lastValue = 2, silenceMode = false, target_CO2 = 400, timeSync = 3 }
-
+QuickApp = {}
 
 ---------------------------------------------------------------------------------
 -----------------------------------НАСТРОЙКИ-------------------------------------
@@ -598,6 +594,17 @@ end
 
 temperatureMin = 12;
 temperatureMax = 25;
+
+co2Min = 300;
+co2Max = 1500;
+-- Шаг счета дельты
+DISCRETE_TEMP_DELTA = 0.5
+-- Шаг счета температуры в ручной режиме
+DISCRETE_TEMP_MANUAL = 0.5
+-- Максимальный уровень скорости при активной тихом режиме
+MAX_SILENCE_MODE = 2
+-- Время обновления
+timeSync = 3
 
 ---------------------------------------------------------------------------------
 ---------------------------------ОСНОВНОЙ КОД------------------------------------
@@ -617,14 +624,6 @@ LIST_CO2_SENSORS_ID = {
 LIST_TEMP_SENSORS_ID = {
 
 }
-
-
-
-DISCRETE_TEMP_DELTA = 0.5
-DISCRETE_TEMP_MANUAL = 0.5
-MAX_SILENCE_MODE = 2
-timeSync = 3
-
 
 -- Определение доступных режимов работы
 
@@ -680,7 +679,7 @@ function QuickApp:onInit()
     
     -- Начальные температуры
     self.temperatures = {
-        basic = temperatureMin
+        basic = temperatureMin,
         delta = 0
     }
     self.temperatures.target = QuickApp.temperatures.basic + QuickApp.temperatures.delta
@@ -752,7 +751,7 @@ function QuickApp:updateInfoAutoLabel ()
     self:updateView ("infoAutoLabel", "text", "АВТО | t воздуха: "..basic.." + "..delta.."("..target..")℃" ) end
 -- Обновление информации о введенной в ручную температуре
 function QuickApp:updateInfoManualLabel ()
-    temperature = "-"
+    local temperature = "-"
     if (QuickApp.supportTempMode.manual == self.modeDeviceTemp) then temperature = hub.getValue(basicSettings.temperatureID, "value") end
     self:updateView ("infoManualLabel", "text", "РУЧНОЙ | Подогрев воздуха до: " .. temperature .. " °C") end
 
@@ -761,7 +760,7 @@ function QuickApp:updateInfoManualLabel ()
 ---- КНОПКИ ----
 ----------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------
-
+----------------------------------------------
 -- Температура подогреваемого воздуха --
 -- Переключение режима обогрева
 function QuickApp:button_mode_switsher(event)
@@ -779,13 +778,7 @@ function QuickApp:button_mode_switsher(event)
 end
 
 
-
-
-+ * (ярлык) "АВТО | t воздуха: "[х]" + "[y]" ("[z]") ℃" - infoAutoLabel
-где x - результат мин, ср, макс; y - значения дельты, z - результат x+y 
-   + * (кнопки) [MIN][AVR][MAX][+][-] 
-    button_temp_max,button_temp_min,button_temp_avg,button_temp_minus,button_temp_plus onrelease: button_temperature
--- Переключение вентиляции АВТО/РУЧНОЙ--
+-- +- auto avg min max --
 function QuickApp:button_temperature(event)
     local button = tostring(event.elementName)
     -- CHECK PLACEHOLDER
@@ -807,7 +800,7 @@ end
 
 
 
--- Ручное редактирование
+-- Ручное редактирование температуры
 function QuickApp:button_temp_manual()
     local button = tostring(event.elementName)
     -- CHECK PLACEHOLDER
@@ -828,7 +821,8 @@ function QuickApp:button_temp_manual()
     end
     self:updateInfoManualLabel()
 end
-
+----------------------------------------------
+-- Скорость потока --
 -- Переключение вентиляции АВТО/РУЧНОЙ--
 function QuickApp:Button_VentMode(event)
     local button = tostring(event.elementName)
