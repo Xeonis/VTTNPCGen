@@ -984,3 +984,342 @@ function QuickApp:speedHigh()
     self:debug("Текст - " .. textSpeed)
      
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--[[
+1. Создать ВУ типа РЕЛЕ 
+2. Добавить кнопки/ярлыки: 
+   + * (ярлык) "Регулировка температуры:" [РУЧНАЯ / АВТО] - infoMainLabel
+   + * (ярлык) "АВТО | t воздуха: "[х]" + "[y]" ("[z]") ℃" - infoAutoLabel
+
+где x - результат мин, ср, макс; y - значения дельты, z - результат x+y 
+   + * (кнопки) [MIN][AVR][MAX][+][-] 
+    button_temp_max,button_temp_min,button_temp_avg,button_temp_minus,button_temp_plus onrelease: button_temperature
+   + * (ярлык) "РУЧНАЯ | t воздуха:"[значение]" ℃" - infoManualLabel
+
+    * (ярлык) "" 
+    * (ярлык) "Регулировка скорости: " [РУЧНАЯ / АВТО] 
+    (кнопки) [низкая][средняя][высокая] - on released Button_Speed {button_vent_off, button_vent_2,button_vent_3,button_vent_4}
+    * (ярлык) "АВТО | Уровень СО2: " [значение] " ppm - LevelCO2Label
+   + * (кнопки) [-50][-10][+10][+50] - onrelease Button_CO2
+   {button_co2_m50,button_co2_m10,button_co2_p10,button_co2_p50}
+    * (ярлык) "РУЧНАЯ | Скорость: "[значение] 
+   + * (кнопки) [низкая][средняя][высокая] - on released Button_Speed {button_vent_off, button_vent_2,button_vent_3,button_vent_4}
+  +  * (ярлык) "Тихий режим: "[значение] - silenceModeLabel
+  +  * (кнопки) [вкл][выкл] - Button_SilenceMode {button_silence_on, button_silence_off}
+]]--
+
+
+--[[ Модель ПВВ: SistemAir
+
+    * Режим работы:
+
+        а. Основные:
+        1 - Manual, 2 - Crowded, 3 - Refresh, 4 - Fireplace, 5 - Away, 6 - Holiday
+        
+        б. Дополнительные:
+        0 - Auto, 7 - Cooker Hood, 8 - Vacuum Cleaner, 9 .. 11 - CDI, 12 - Pressure Guard
+
+    * Скорость: 0/1 - OFF, 2 - LOW, 3 - NORMAL, 3 - HIGH
+
+    * Температура: 12__30
+
+    v2.01
+
+]]--
+
+
+---------------------------------------------------------------------------------
+-----------------------------------НАСТРОЙКИ-------------------------------------
+---------------------------------------------------------------------------------
+
+temperatureMin = 12;
+temperatureMax = 25;
+
+
+---------------------------------------------------------------------------------
+---------------------------------ОСНОВНОЙ КОД------------------------------------
+---------------------------------------------------------------------------------
+
+-- РАБОЧИЕ ПЕРЕМЕННЫЕ --
+
+-- ID устройств
+basicSettings = {
+	modeID = nil,			        -- ID режима ПВУ
+	fanID = nil,		            -- ID скорости ПВУ
+	temperatureID = nil			    -- ID температуры ПВУ
+}
+
+
+
+LIST_CO2_SENSORS_ID = {
+
+}
+-- LABELS = {infoTemperatureLabel, infoSpeedLabel,silenceModeLabel}
+--!USEGLOBAL = {lastValue = 2, silenceMode = false, target_CO2 = 400, }
+MAX_SILENCE_MODE = 2
+modeDevice = {label = "РУЧНОЙ"} -- заглушка(для возможного добавления функционала)
+timeSync = 3
+
+---- ОСНОВНЫЕ ----
+-- Вспомогательные функции --
+function getSensorsValue(ListOfSensors) 
+    local max = 0
+    local min = 0
+    local avg = 0
+    local i   = 0
+    for k,v in pairs(ListOfSensors) do
+        local value = fibaro.getValue(v, "value")
+        if value == nil then goto continue end
+        if max < value then max = value end
+        if min > value then min = value end
+        i = i + 1
+        avg = avg + value
+        ::continue::
+    end
+    avg = avg/id
+    return {avg, min, max}
+end
+
+
+-- Первый запуск
+function QuickApp:onInit()
+
+    self:debug("Запуск виртуального устройства")
+
+    -- Получение данных ID
+    basicSettings.modeID = tonumber(self:getVariable("id_mode"))
+    basicSettings.fanID = tonumber(self:getVariable("id_speed"))
+    basicSettings.temperatureID = tonumber(self:getVariable("id_temperature"))
+    
+    local syncTime = tonumber(self:getVariable("timeSync"))
+    if (syncTime > 0) then timeSync = syncTime end
+
+    self:work()
+
+end
+
+-- Основная функция
+function QuickApp:work()
+    -- self:debug("work")
+    self:sync()
+    hub.setTimeout(3*1000, function() self:work() end)
+end
+
+
+-- Обновление состояния
+function QuickApp:sync()
+    self:debug("sync")
+    -- Обновление состояние статуса ПВУ
+    local valueSpeed = tonumber(hub.getValue(basicSettings.fanID, "value"))
+    valueSpeed = 3
+    if (valueSpeed >= 2 ) then 
+        if not(hub.getValue(self.id, "value")) then 
+            self:updateProperty("value", true)
+        end
+        -- Сохранение последней установленной скорости
+        if (valueSpeed ~= tonumber(self:getVariable("lastValue")) ) then
+            self:setVariable("lastValue", valueSpeed)
+        end
+    else
+        if (hub.getValue(self.id, "value")) then 
+            self:updateProperty("value", false)
+        end
+    end
+
+    -- Проверка разрешенного режима
+    if (hub.getValue(basicSettings.modeID, "value") ~= 1) then
+        hub.call(basicSettings.modeID, "setValue", 1)
+    end
+
+    -- Обновление информации о скорости ПВУ
+    local textSpeed = modeDevice.label .. " | Скорость ПВУ: "
+    if (valueSpeed == 0 or valueSpeed == 1) then
+        textSpeed = textSpeed .. "ВЫКЛ"
+    elseif ( valueSpeed == 2 ) then
+        textSpeed = textSpeed .. "Низкая"
+    elseif ( valueSpeed == 3 ) then
+        textSpeed = textSpeed .. "Средняя"
+    elseif ( valueSpeed == 4 ) then
+        textSpeed = textSpeed .. "Высокая"
+    else
+        self:debug("Неизвестная скорость - " .. valueSpeed)
+    end
+    self: updateView ("infoSpeedLabel", "text", textSpeed)
+
+    -- Обновление информации о подогреваемой температуры
+    self:updateView ("infoTemperatureLabel", "text", "Подогрев воздуха до: " .. tonumber(hub.getValue(basicSettings.temperatureID, "value")) .. " °C")
+
+end
+
+---- КНОПКИ ----
+
++ * (ярлык) "АВТО | t воздуха: "[х]" + "[y]" ("[z]") ℃" - infoAutoLabel
+
+где x - результат мин, ср, макс; y - значения дельты, z - результат x+y 
+   + * (кнопки) [MIN][AVR][MAX][+][-] 
+    button_temp_max,button_temp_min,button_temp_avg,button_temp_minus,button_temp_plus onrelease: button_temperature
+-- Переключение вентиляции АВТО/РУЧНОЙ--
+function QuickApp:button_temperature(event)
+    local button = tostring(event.elementName)
+    -- CHECK PLACEHOLDER
+    --Поменять ид под конкретное устройство или поменять ид устройств
+    local ButtonHolder = {
+        button_ID_14_2_auto = {value = false, label = "Активорован Тихий режим"},
+        button_ID_14_2_manual = {value = true, label = "Тихий режим выключен"},
+    }
+    if (ButtonHolder[button] == nil) then
+        return;
+    end;
+    local buttonProperties = ButtonHolder[button]
+    self: updateView ("silenceModeLabel", "text", buttonProperties.label)
+    self:setVariable("silenceMode", buttonProperties.value)
+end
+
+
+
+-- Температура подогреваемого воздуха --
+-- Увеличение температуры воздуха
+function QuickApp:tempAdd()
+    local x = 1
+    local currentValue = tonumber(hub.getValue(basicSettings.temperatureID, "value"))
+    if currentValue+x >= temperatureMin and currentValue+x <= temperatureMax then 
+        hub.call(basicSettings.temperatureID, "setValue", currentValue+x)
+        self:updateView ("infoTemperatureLabel", "text", "Подогрев воздуха до: " .. currentValue+x .. " °C")
+    else
+        hub.call(basicSettings.temperatureID, "setValue", temperatureMax)
+        self:updateView ("infoTemperatureLabel", "text", "Подогрев воздуха до: " .. temperatureMax .. " °C")
+    end
+end
+-- Уменьшение температуры воздуха
+function QuickApp:tempRemove()
+    local x = -1
+    local currentValue = tonumber(hub.getValue(basicSettings.temperatureID, "value"))
+    if currentValue+x >= temperatureMin and currentValue+x <= temperatureMax then 
+        hub.call(basicSettings.temperatureID, "setValue", currentValue+x)
+        self:updateView ("infoTemperatureLabel", "text", "Подогрев воздуха до: " .. currentValue+x .. " °C")
+    else
+        hub.call(basicSettings.temperatureID, "setValue", temperatureMin)
+        self:updateView ("infoTemperatureLabel", "text", "Подогрев воздуха до: " .. temperatureMin .. " °C")
+    end
+end
+
+
+-- Переключение вентиляции АВТО/РУЧНОЙ--
+function QuickApp:Button_VentMode(event)
+    local button = tostring(event.elementName)
+    -- CHECK PLACEHOLDER
+    --Поменять ид под конкретное устройство или поменять ид устройств
+    local ButtonHolder = {
+        button_ID_14_2_auto = {value = false, label = "Активорован Тихий режим"},
+        button_ID_14_2_manual = {value = true, label = "Тихий режим выключен"},
+    }
+    if (ButtonHolder[button] == nil) then
+        return;
+    end;
+    local buttonProperties = ButtonHolder[button]
+    self: updateView ("silenceModeLabel", "text", buttonProperties.label)
+    self:setVariable("silenceMode", buttonProperties.value)
+end
+
+
+-- АВТО | Заданный уровень СО2 --
+-- СО2 
+function QuickApp:Button_CO2(event)
+    local button = tostring(event.elementName)
+    -- CHECK PLACEHOLDER
+    --Поменять ид под конкретное устройство или поменять ид устройств
+    local ButtonHolder = {
+        button_ID_14_2_m50 = -50,
+        button_ID_14_2_m10 = -10,
+        button_ID_14_2_10 = 10,
+        button_ID_14_2_50 = 50,
+    }
+    if (ButtonHolder[button] == nil) then
+        return;
+    end;
+    local x = ButtonHolder[button]
+    local currentValue = tonumber(self:getVariable("target_CO2"))
+    if currentValue+x >= co2Min and currentValue+x <= co2Max then
+        self:setVariable("target_CO2", currentValue+x)
+        self:updateView ("LevelCO2Label", "text", modeDevice.label .. "| Заданный уровень СО2, ppm: " .. currentValue+x)
+    end
+end
+
+
+-- Регулировка скорости --
+-- Низкая
+function QuickApp:Button_Speed()
+    local button = tostring(event.elementName)
+    -- CHECK PLACEHOLDER
+    --Поменять ид под конкретное устройство или поменять ид устройств
+    local ButtonHolder = {
+        button_vent_off = {value = 0, label = "ВЫКЛ"},
+        button_vent_2 = {value = 2, label = "Низкая"},
+        button_vent_3 = {value = 3, label = "Средняя"},
+        button_vent_4 = {value = 4, label = "Высокая"},
+    }
+    if (ButtonHolder[button] == nil) then
+        return;
+    end;
+    local buttonProperties = ButtonHolder[button]
+    local valueSpeed = tonumber(hub.getValue(basicSettings.fanID, "value"))
+    -- проверка на режим
+     
+
+    -- Установка нужной скорости
+    if (valueSpeed ~= buttonProperties.value) then
+        hub.call(basicSettings.fanID,  "setValue", buttonProperties.value)
+    end
+
+    -- Обновление статуса
+    if not(hub.getValue(self.id, "value")) then 
+        self:updateProperty("value", true)
+    end
+
+    -- Обновление информации о скорости ПВУ
+    local textSpeed = modeDevice.label .. "| Скорость ПВУ: " .. buttonProperties.label
+    self:updateView("infoSpeedLabel", "text", textSpeed)
+
+    -- Обновление последней установленной скорости
+    self:setVariable("lastValue", buttonProperties.value)
+
+    -- Отладка
+    self:debug("Установленая скорость - " .. valueSpeed)
+    self:debug("Текст - " .. textSpeed)
+     
+end
+
+
+-- Тихий тежим включение и выключение--
+function QuickApp:Button_SilenceMode()
+    local button = tostring(event.elementName)
+    -- CHECK PLACEHOLDER
+    --Поменять ид под конкретное устройство или поменять ид устройств
+    local ButtonHolder = {
+        button_silence_off = {value = false, label = "Активорован Тихий режим"},
+        button_ID_14_2_on = {value = true, label = "Тихий режим выключен"},
+    }
+    if (ButtonHolder[button] == nil) then
+        return;
+    end;
+    local buttonProperties = ButtonHolder[button]
+    self:debug(buttonProperties.label)
+    self: updateView ("silenceModeLabel", "text", buttonProperties.label)
+    self:setVariable("silenceMode", buttonProperties.value)
+end
