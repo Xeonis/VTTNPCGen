@@ -109,12 +109,13 @@ LIST_TEMP_SENSORS_ID = {
 -- Определение доступных режимов работы
 
 -- Определение доступных скоростей
+-- activationDiference - при какой разнице физицеской величины от заданной будет активироватся тот или иной режим
 QuickApp.supportSpeed = {
-    [0] = {value = 0, label = "ВЫКЛ"},
-    [1] = {value = 1, label = "ВЫКЛ"},
-    [2] = {value = 2, label = "Низкая"},
-    [3] = {value = 3, label = "Средняя"},
-    [4] = {value = 4, label = "Высокая"},
+    [0] = {value = 0, label = "ВЫКЛ", activationDiference = 0.05 },
+    [1] = {value = 1, label = "ВЫКЛ", activationDiference = 0.05 },
+    [2] = {value = 2, label = "Низкая", activationDiference = 0.06},
+    [3] = {value = 3, label = "Средняя", activationDiference = 0.30},
+    [4] = {value = 4, label = "Высокая",activationDiference = 0.40},
 }
 QuickApp.supportTempMode = {
     auto = {label = "АВТО"},
@@ -144,7 +145,8 @@ function getSensorsValue(ListOfSensors)
     avg = avg/i
     return {avg, min, max}
 end
--- Команды апаратам--
+-- Команды апаратам-- 
+-- Устанавливаю скорость со всеми проверками без логики повышения и понижения
 function QuickApp:setSpeed(newSpeed) 
     local realSpeedDevice = tonumber(hub.getValue(basicSettings.fanID, "value"))
     local valueSpeed = tonumber(hub.getValue(basicSettings.fanID, "value"))
@@ -164,11 +166,6 @@ function QuickApp:setSpeed(newSpeed)
         goto setSpeed 
     end
     
-
-    --Что делает этот блок кода я не понимаю WARN
-    if not(hub.getValue(self.id, "value")) then 
-        self:updateProperty("value", true)
-    end
    
     if self.supportSpeed[valueSpeed] == nil then
         self:debug("Неизвестная скорость - " .. valueSpeed) end 
@@ -187,6 +184,10 @@ function QuickApp:setSpeed(newSpeed)
         self:updateSpeedLabel()
     end
 end;
+
+function QuickApp:setTemp(newTemp)
+    local currentValue = tonumber(hub.getValue(basicSettings.temperatureID, "value"))
+end
 
 
 
@@ -232,16 +233,6 @@ function QuickApp:sync()
 
     self:setSpeed()
 
-    --Нужно ли это тут?
-    -- Проверка разрешенного режима
-    if (hub.getValue(basicSettings.modeID, "value") ~= 1) then
-        hub.call(basicSettings.modeID, "setValue", 1)
-    end
-
-
-    --    
-    
-
     -- Обновление информации
     self:updateInfoMainLabel()
     self:updateSpeedLabel()
@@ -259,10 +250,6 @@ end
 -- Регулировка температуры:
 function QuickApp:updateInfoMainLabel () 
     self: updateView ("infoMainLabel", "text", "Регулировка температуры: " .. self.modeDeviceTemp.label) end
-    
--- Изменение значения скорости
-function QuickApp:updateSpeedLabel () 
-    self: updateView ("speedlabel", "text", "Текущая скорость: " .. self.supportSpeed[tonumber(hub.getValue(basicSettings.fanID, "value"))].label) end
 
 -- Обновление информации о автоматическом выборе температуры
 function QuickApp:updateInfoAutoLabel ()
@@ -270,10 +257,17 @@ function QuickApp:updateInfoAutoLabel ()
     local delta = self.temperatures.delta
     local target = self.temperatures.target
     self:updateView ("infoAutoLabel", "text", "АВТО | t воздуха: "..basic.." + "..delta.."("..target..")℃" ) end
-    
+
 -- Обновление информации о введенной в ручную температуре
 function QuickApp:updateInfoManualLabel ()
     local temperature = "-"
+    
+-- Изменение значения скорости
+function QuickApp:updateSpeedLabel () 
+    self: updateView ("speedlabel", "text", "Текущая скорость: " .. self.supportSpeed[tonumber(hub.getValue(basicSettings.fanID, "value"))].label) end
+
+
+
     if (self.supportTempMode.manual == self.modeDeviceTemp) then temperature = hub.getValue(basicSettings.temperatureID, "value") end
     self:updateView ("infoManualLabel", "text", "РУЧНОЙ | Подогрев воздуха до: " .. temperature .. " °C") end
 
@@ -435,8 +429,6 @@ function QuickApp:Button_Speed(event)
         end
         self:setVariable("lastValue", buttonProperties.value)
     end
-    self:debug("Установленая скорость - " .. valueSpeed, "Текст - " .. textSpeed)
-
 
     speedlabel Broke] -- нужно обновить но в этот момент резульнат еще не применится
 
@@ -464,3 +456,4 @@ function QuickApp:Button_SilenceMode(event)
     self:updateView ("silenceModeLabel", "text", buttonProperties.label)
     self:setVariable("silenceMode", buttonProperties.value)
 end
+
