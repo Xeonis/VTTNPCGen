@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+
+    <div id="app">
+        <div class= "display:flex">
+            <input v-model="P" type="number" placeholder="edit me p">
+            <p>P: {{ P }}</p>
+            <input v-model="I" type="number" placeholder="edit me I">
+            <p>I: {{ I }}</p>
+            <input v-model="D" type="number" placeholder="edit me D">
+            <p>D: {{ D }}</p>
+
+            <input v-model="T" placeholder="edit me t">
+            <p>time is: {{ T }}</p>
+
+
+            <input v-model="Omin" placeholder="edit me Out min">
+            <p>min out is: {{ Omin }}</p>
+            <input v-model="Omax" placeholder="edit me Out max">
+            <p>Mmax out is: {{ Omax }}</p>
+        </div>
+        <div class= "display:flex">
+            <p>{{ foo }}</p>
+            <!-- мы теперь не можем обновить `foo`! -->
+            <button v-on:click="geet">Изменить</button>
+            <canvas id="myChart" style="width:100%;max-width:600px"></canvas>
+        </div>
+
+
+        
+    </div>
+
+
+
+
+
+
+
+
+<script src="./vue.js"></script>
+<script src="./pid.js"></script>
+<script src="./chart.js"></script>
+
+<script>
+    let chart = new Chart("myChart", {
+                    type: "line",
+                    data: {
+                        labels: [1,2,3,4,5],
+                        datasets: [{
+                        fill: false,
+                        pointRadius: 2,
+                        borderColor: "rgba(0,0,255,0.5)",
+                        data: [1,2,3,4,5]
+                        }]
+                    },    
+                    options: {
+                        legend: {display: false},
+                        title: {
+                        display: true,
+                        text: "y = sin(x)",
+                        fontSize: 16
+                        }
+                    }
+                    })
+
+
+   let app = new Vue({
+        el: '#app',
+        data: {
+            P : 0,
+            I : 0,
+            D : 0,
+            T : 0,
+            Omin : 0,
+            Omax : 0,
+            sin1: true,
+            foo: 'bar',
+            xValues : [1,2,3,4,5],
+            yValues : [1,2,3,4,5],
+            chart: chart
+           // chart: chart
+        },
+
+        methods: {
+            generateData: function (value, i1, i2, step = 1) {
+                let Y = []; X = []
+                for (let x = i1; x <= i2; x += step) {
+                    Y.push(eval(value));
+                    X.push(x);
+                }
+                this.xValues = X;
+                this.yValues = Y;
+
+
+                this.chart.data.labels = X;
+                this.chart.data.datasets =  [{
+                        fill: false,
+                        pointRadius: 2,
+                        borderColor: "rgba(0,0,255,0.5)",
+                        data: Y
+                }]
+
+            },
+            geet: function (event) {
+                if (this.sin){
+                    console.log(this.sin);
+                    this.generateData("Math.cos(x)", 0, 10, 0.5);
+                    this.sin = false
+                    console.log(this.chart);
+                    
+                }else{
+                    console.log(this.sin);
+                    this.generateData("Math.sin(x)", 0, 10, 0.5);
+                    this.sin = true
+                }
+                
+            }
+        },
+        computed: {
+            evenNumbers: () => {
+                return this.numbers.filter(function (number) {
+                    return number % 2 === 0
+                })
+            }
+        },
+
+
+    })
+
+
+   
+   
+</script>
+
+</body>
+</html>
