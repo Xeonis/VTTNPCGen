@@ -1,4 +1,9 @@
 ---@diagnostic disable: lowercase-global
+
+QuickApp = {}
+fibaro = {}
+hub = {}
+
 --[[
 1. Создать ВУ типа РЕЛЕ 
 2. Добавить кнопки/ярлыки: 
@@ -62,9 +67,7 @@
 
 -- LABELS = {infoTemperatureLabel, infoSpeedLabel,silenceModeLabel}
 --!USEGLOBAL = {lastValue = 2, silenceMode = false, target_CO2 = 400, timeSync = 3 }
-QuickApp = {}
-fibaro = {}
-hub = {}
+
 ---------------------------------------------------------------------------------
 -----------------------------------НАСТРОЙКИ-------------------------------------
 ---------------------------------------------------------------------------------
@@ -142,32 +145,48 @@ function getSensorsValue(ListOfSensors)
     return {avg, min, max}
 end
 -- Команды апаратам--
-function QuickApp:setSpeed() 
-    
-    -- Обновление состояние статуса ПВУ
+function QuickApp:setSpeed(newSpeed) 
+    local realSpeedDevice = tonumber(hub.getValue(basicSettings.fanID, "value"))
     local valueSpeed = tonumber(hub.getValue(basicSettings.fanID, "value"))
-    if (valueSpeed >= 2) then 
-        if not(hub.getValue(self.id, "value")) then 
-            self:updateProperty("value", true)
+    -- Обновлю скорость если введена ручная
+    if (newSpeed ~= valueSpeed and newSpeed ~= nil) then
+        valueSpeed = newSpeed
+    end
+
+    if self.supportSpeedMode.auto == self.modeDeviceSpeed then
+        -- Отключаем если нет повода активничать 
+        if #self.reasonByActive == 0  then
+            valueSpeed = self.supportSpeed[0].value
+            goto setSpeed -- Делать нечего перходим к установке значения
         end
-        -- Сохранение последней установленной скорости
-        if (valueSpeed ~= tonumber(self:getVariable("lastValue")) ) then
-            self:setVariable("lastValue", valueSpeed)
-        end
-    else
-        if (hub.getValue(self.id, "value")) then 
-            self:updateProperty("value", false)
-        end
+    elseif self.supportSpeedMode.manual == self.modeDeviceSpeed then
+        --значение скорости в переменной просто переходим к установке этого значения
+        goto setSpeed 
     end
     
-    if QuickApp.supportSpeed[valueSpeed] == nil then
-        self:debug("Неизвестная скорость - " .. valueSpeed) end 
-    if (valueSpeed ~= buttonProperties.value) then
-        hub.call(basicSettings.fanID,  "setValue", buttonProperties.value)
-    end
-     if 
-end;
 
+    --Что делает этот блок кода я не понимаю WARN
+    if not(hub.getValue(self.id, "value")) then 
+        self:updateProperty("value", true)
+    end
+   
+    if self.supportSpeed[valueSpeed] == nil then
+        self:debug("Неизвестная скорость - " .. valueSpeed) end 
+
+    -- Проверка на тихий режим
+    local silentMode = tonumber(self:getVariable("silenceMode"))
+    ::setSpeed::
+    if silentMode > 0 and valueSpeed > MAX_SILENCE_MODE then
+        valueSpeed = MAX_SILENCE_MODE;
+    end
+
+    -- Отдаем команду на исполнение если значение поменялось
+    if (valueSpeed ~= tonumber(self:getVariable("lastValue")) or valueSpeed ~= realSpeedDevice) then
+        self:setVariable("lastValue", valueSpeed)
+        hub.call(basicSettings.fanID,  "setValue", valueSpeed)
+        self:updateSpeedLabel()
+    end
+end;
 
 
 
@@ -189,10 +208,6 @@ function QuickApp:onInit()
     self.temperatures.target = self.temperatures.basic + self.temperatures.delta
 
     self.reasonByActive = {}
-
-    if (self.modeDeviceTemp == self.supportTempMode.auto) then
-
-    end;
 
     local syncTime = tonumber(self:getVariable("timeSync"))
     if (syncTime > 0) then timeSync = syncTime end
@@ -415,7 +430,7 @@ function QuickApp:Button_Speed(event)
     
     if valueSpeed ~= buttonProperties then
         self.modeDeviceSpeed = self.supportSpeedMode.manual
-        if silentMode > 0 and buttonProperties > MAX_SILENCE_MODE then
+        if silentMode > 0 and buttonProperties.value > MAX_SILENCE_MODE then
             valueSpeed = MAX_SILENCE_MODE;
         end
         self:setVariable("lastValue", buttonProperties.value)
@@ -435,8 +450,7 @@ end
 -- Тихий тежим включение и выключение--
 function QuickApp:Button_SilenceMode(event)
     local button = tostring(event.elementName)
-    -- CHECK PLACEHOLDER
-    --Поменять ид под конкретное устройство или поменять ид устройств
+    -- CHECK PLACEHOLDER --Поменять ид под конкретное устройство или поменять ид устройств
     local ButtonHolder = {
         button_silence_off = {value = 0, label = "Активорован Тихий режим"},
         button_ID_14_2_on = {value = 1, label = "Тихий режим выключен"},
